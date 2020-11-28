@@ -128,8 +128,14 @@ namespace AuctionSite
         public AuctionContext(string connectionString) : base(connectionString)
         {
             // Database.SetInitializer(new DropCreateDatabaseAlways<AuctionContext>());
-            //Database.SetInitializer<ProductContext>(null);
+            //Database.SetInitializer<AuctionContext>(null);
 
+        }
+
+        public AuctionContext(string connectionString,bool DropDb) : base(connectionString)
+        {
+            if(DropDb)
+            Database.SetInitializer(new DropCreateDatabaseAlways<AuctionContext>());
         }
         public DbSet<SiteImpl> Sites { get; set; }
         public DbSet<UserImpl> Users { get; set; }

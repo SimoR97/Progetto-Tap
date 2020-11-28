@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.Entity;
+using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,29 +12,192 @@ namespace AuctionSite
 {
     public class SiteFactory : ISiteFactory
     {
+        private static bool CheckConnection(AuctionContext ac)
+        {
+
+            try
+            {
+
+                ac.Database.Connection.Open();
+                ac.Database.Connection.Close();
+            }
+            catch (SqlException)
+            {
+                return false;
+            }
+            return true;
+
+
+        }
+
+
+        private static bool CheckIfNull(string toCheck) { return toCheck.Equals(null); }
+
+        private static void CheckIfStringIsValid(string connectionString)
+        {
+            if (!(null == connectionString))
+            {
+                if (!connectionString.Contains("Data Source="))
+                    throw new UnavailableDbException(nameof(connectionString) + "Not in the right format");
+            }
+            else
+                throw new ArgumentNullException();
+
+        }
         public void CreateSiteOnDb(string connectionString, string name, int timezone, int sessionExpirationTimeInSeconds, double minimumBidIncrement)
         {
-            throw new NotImplementedException();
+            CheckIfStringIsValid(connectionString);
+            if (!(null == name))
+            {
+                if (name.Length >= DomainConstraints.MinSiteName && name.Length <= DomainConstraints.MaxSiteName)
+
+
+                {
+                    if (timezone >= DomainConstraints.MinTimeZone && timezone <= DomainConstraints.MaxTimeZone)
+                    {
+                        //if 
+                        using (var ctx = new AuctionContext(connectionString))
+                        {
+                            if (CheckConnection(ctx))
+                            {
+                                var tmp = ctx.Sites.Where(s => true);
+
+                                foreach (var item in tmp)
+                                {
+                                    if (!(null == item.SiteName))
+                                    {
+                                        ctx.Sites.Add(new SiteImpl(name, timezone, minimumBidIncrement, sessionExpirationTimeInSeconds));
+                                        ctx.SaveChanges();
+                                    }
+
+                                    throw new NameAlreadyInUseException(nameof(name));
+                                }
+                            }
+                            throw new UnavailableDbException();
+                        }
+                    }
+                    else
+                        throw new ArgumentOutOfRangeException();
+                }
+                else
+                    throw new ArgumentException();
+            }
+            else
+                throw new ArgumentNullException();
         }
 
         public IEnumerable<string> GetSiteNames(string connectionString)
         {
-            throw new NotImplementedException();
+            CheckIfStringIsValid(connectionString);
+            
+            using (var ctx = new AuctionContext(connectionString))
+            {
+                if (CheckConnection(ctx))
+                {
+                    var names = new List<string>();
+                    IQueryable<SiteImpl> site = ctx.Sites.Where(s => true);
+                    foreach (var siteItem in site)
+                    {
+                        names.Add(siteItem.SiteName);
+
+                    }
+                    return names;
+                        
+                }
+                else
+                    throw new UnavailableDbException();
+            }
+
         }
 
         public int GetTheTimezoneOf(string connectionString, string name)
         {
-            throw new NotImplementedException();
+            CheckIfStringIsValid(connectionString);
+            if (!(null == name))
+            {
+                if (name.Length >= DomainConstraints.MinSiteName && name.Length <= DomainConstraints.MaxSiteName)
+                {
+                    using (var ctx = new AuctionContext(connectionString))
+                    {
+                        if (CheckConnection(ctx))
+                        {
+                            SiteImpl site = (SiteImpl)ctx.Sites.Where(s => s.SiteName.Equals(name));
+                            if (!(null == site)) return site.TimeZone;
+                            else
+                                throw new InexistentNameException(nameof(name));
+                        }
+                        else
+                            throw new UnavailableDbException();
+
+                    }
+                }
+                else
+                    throw new ArgumentException(nameof(name) + "the name lenght is < or > for the allowed length ");
+
+            }
+
+            throw new ArgumentNullException(nameof(name));
         }
 
         public ISite LoadSite(string connectionString, string name, IAlarmClock alarmClock)
         {
-            throw new NotImplementedException();
+            CheckIfStringIsValid(connectionString);
+            if (!(null == name))
+            {
+                if (name.Length >= DomainConstraints.MinSiteName && name.Length <= DomainConstraints.MaxSiteName)
+                {
+                    using (var ctx = new AuctionContext(connectionString))
+                    {
+                        if (CheckConnection(ctx))
+                        {
+                            //errato , cambiare ISIte con Site non appena verrà creata la classe Site
+                            ISite site = (ISite)ctx.Sites.Where(s => s.SiteName.Equals(name));
+                            if (!site.Equals(null)) return site;
+                            else
+                                throw new InexistentNameException(nameof(name));
+                        }
+                        else
+                            throw new UnavailableDbException();
+
+                    }
+                }
+                else
+                    throw new ArgumentException(nameof(name) + "the name lenght is < or > for the allowed length ");
+
+            }
+
+            throw new ArgumentNullException(nameof(name));
         }
 
         public void Setup(string connectionString)
         {
-            throw new NotImplementedException();
+            CheckIfStringIsValid(connectionString);
+            //drop previuosly version of the database 
+            if(Database.Exists(connectionString))
+            Database.Delete(connectionString);
+            //Database.SetInitializer(new DropCreateDatabaseAlways<AuctionContext>());
+            try
+            {
+                using (var ctx = new AuctionContext(connectionString,true))
+                {
+                    ctx.Database.Create();
+                    if (!CheckConnection(ctx)) throw new UnavailableDbException("The Db is not responding");
+                    ctx.Database.Initialize(false);
+                    ctx.Sites.Create();
+                    ctx.Users.Create();
+                    ctx.Sessions.Create();
+                    ctx.Auctions.Create();
+                    ctx.SaveChanges();
+                    
+                }
+            }
+            catch (Exception e)
+            {
+                throw new UnavailableDbException(e.Message + " The string is malformed"); ;
+            }
+
+
+
         }
     }
 }
