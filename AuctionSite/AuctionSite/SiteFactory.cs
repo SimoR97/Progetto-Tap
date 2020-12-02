@@ -53,28 +53,35 @@ namespace AuctionSite
 
 
                 {
-                    if (timezone >= DomainConstraints.MinTimeZone && timezone <= DomainConstraints.MaxTimeZone)
+                    if (timezone >= DomainConstraints.MinTimeZone && timezone <= DomainConstraints.MaxTimeZone )
                     {
-                        //if 
-                        using (var ctx = new AuctionContext(connectionString))
+                        if (sessionExpirationTimeInSeconds >= 0 && minimumBidIncrement >= 0)
                         {
-                            if (CheckConnection(ctx))
+                            //if 
+                            using (var ctx = new AuctionContext(connectionString))
                             {
-                                var tmp = ctx.Sites.Where(s => true);
-
-                                foreach (var item in tmp)
+                                if (CheckConnection(ctx))
                                 {
-                                    if (!(null == item.SiteName))
+                                    var tmp = ctx.Sites.Where(s => true);
+
+                                    if(tmp.Any())
                                     {
+                                        foreach (var item in tmp)
+                                        {
+                                            if (name == item.SiteName)
+                                                throw new NameAlreadyInUseException(nameof(name));
+                                        }
                                         ctx.Sites.Add(new SiteImpl(name, timezone, minimumBidIncrement, sessionExpirationTimeInSeconds));
                                         ctx.SaveChanges();
-                                    }
 
-                                    throw new NameAlreadyInUseException(nameof(name));
+                                    }
                                 }
+                                else
+                                    throw new UnavailableDbException();
                             }
-                            throw new UnavailableDbException();
                         }
+                        else
+                            throw new ArgumentOutOfRangeException();
                     }
                     else
                         throw new ArgumentOutOfRangeException();
@@ -121,8 +128,16 @@ namespace AuctionSite
                     {
                         if (CheckConnection(ctx))
                         {
-                            SiteImpl site = (SiteImpl)ctx.Sites.Where(s => s.SiteName.Equals(name));
-                            if (!(null == site)) return site.TimeZone;
+                            var site = ctx.Sites.Where(s => s.SiteName.Equals(name));
+                           
+                            if (site.Any())
+                            {
+                                foreach (var item in site)
+                                {
+                                    return item.TimeZone;
+                                }
+                            }
+
                             else
                                 throw new InexistentNameException(nameof(name));
                         }
