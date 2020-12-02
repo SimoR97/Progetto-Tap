@@ -64,17 +64,24 @@ namespace AuctionSite
                                 {
                                     var tmp = ctx.Sites.Where(s => true);
 
-                                    if(tmp.Any())
+                                    foreach (var item in tmp)
                                     {
-                                        foreach (var item in tmp)
-                                        {
-                                            if (name == item.SiteName)
-                                                throw new NameAlreadyInUseException(nameof(name));
-                                        }
+                                        if (name == item.SiteName)
+                                                
+                                            throw new NameAlreadyInUseException(nameof(name));
+                                    }
+                                    try
+                                    {
                                         ctx.Sites.Add(new SiteImpl(name, timezone, minimumBidIncrement, sessionExpirationTimeInSeconds));
                                         ctx.SaveChanges();
-
                                     }
+                                    catch (Exception e)
+                                    {
+
+                                        throw new NameAlreadyInUseException(e.InnerException+nameof(name)); ;
+                                    }
+                                    
+                                    
                                 }
                                 else
                                     throw new UnavailableDbException();
@@ -165,9 +172,17 @@ namespace AuctionSite
                     {
                         if (CheckConnection(ctx))
                         {
-                            //errato , cambiare ISIte con Site non appena verrà creata la classe Site
-                            ISite site = (ISite)ctx.Sites.Where(s => s.SiteName.Equals(name));
-                            if (!site.Equals(null)) return site;
+                            
+                            var site = ctx.Sites.Where(s => s.SiteName.Equals(name));
+                            if (site.Any())
+                            {
+                                var item = site.FirstOrDefault();
+                                Site st = new Site(item.SiteName, item.TimeZone, item.SessionExpirationInSeconds, item.MinimunBidIncrement);
+                                st.alarmClock = alarmClock;
+                                st.connectionString = connectionString;
+                                return st;
+                                
+                            }
                             else
                                 throw new InexistentNameException(nameof(name));
                         }
