@@ -41,13 +41,23 @@ namespace AuctionSite
                 {
                     using (var ctx = new AuctionContext(connectionString))
                     {
-                        var query = ctx.Sites.Where(s => s.SiteName.Equals(Name)).FirstOrDefault();
-                        var users = query.Users;
-                        foreach (var item in users)
+                        var query = ctx.Sites.Where(s => s.SiteName.Equals(Name)).FirstOrDefault().Users;
+                        foreach (var item in query)
                         {
                             if (item.Username == username)
                                 throw new NameAlreadyInUseException(nameof(username));    
                         }
+                        try
+                        {
+                            ctx.Users.Add(new UserImpl(username, password, Name));
+                            ctx.SaveChanges();
+                        }
+                        catch (Exception e)
+                        {
+
+                            throw new NameAlreadyInUseException(e.InnerException+" "+nameof(username));
+                        }
+                       
                        // username usr = new username(username, password);
                     }
 
@@ -67,7 +77,23 @@ namespace AuctionSite
 
         public IEnumerable<IAuction> GetAuctions(bool onlyNotEnded)
         {
-            throw new NotImplementedException();
+            using (var ctx = new AuctionContext(connectionString))
+            {
+                var query = ctx.Sites
+                            .Where(s => s.SiteName.Equals(Name))
+                            .Select(s => s.Auctions);
+                if (query.Any())
+                {
+                    foreach (var item in query)
+                    {
+                        yield return (IAuction)item;
+                    }
+                }
+                else
+                    throw new Exception("qualcosa è andato storto mentre cercavo di raccogliere le Aste");
+
+
+            }
         }
 
         public ISession GetSession(string sessionId)
@@ -77,12 +103,44 @@ namespace AuctionSite
 
         public IEnumerable<ISession> GetSessions()
         {
-            throw new NotImplementedException();
+            using (var ctx = new AuctionContext(connectionString))
+            {
+                var query = ctx.Sites
+                            .Where(s => s.SiteName.Equals(Name))
+                            .Select(s => s.Sessions);
+                if (query.Any())
+                {
+                    foreach (var item in query)
+                    {
+                        yield return (ISession)item;
+                    }
+                }
+                else
+                    throw new Exception("qualcosa è andato storto mentre cercavo di raccogliere le Sesioni");
+
+
+            }
         }
 
         public IEnumerable<IUser> GetUsers()
         {
-            throw new NotImplementedException();
+            using (var ctx = new AuctionContext(connectionString))
+            {
+                var query = ctx.Sites
+                            .Where(s => s.SiteName.Equals(Name))
+                            .Select(s => s.Users);
+                if (query.Any())
+                {
+                    foreach (var item in query)
+                    {
+                        yield return (IUser)item;
+                    }
+                }
+                else
+                    throw new Exception("qualcosa è andato storto mentre cercavo di raccogliere gli utenti");
+                    
+
+            }
         }
 
         public ISession Login(string username, string password)
