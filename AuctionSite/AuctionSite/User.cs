@@ -9,8 +9,13 @@ namespace AuctionSite
 {
      public class User : IUser
     {
-        public string Username => throw new NotImplementedException();
+        public string Username { get; }
 
+        public string connectionString { get; set; }
+        public  User(string username)
+        {
+            Username = username;
+        }
         public void Delete()
         {
             throw new NotImplementedException();

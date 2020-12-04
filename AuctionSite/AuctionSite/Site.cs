@@ -86,7 +86,11 @@ namespace AuctionSite
                 {
                     foreach (var item in query)
                     {
-                        yield return (IAuction)item;
+                        foreach (var auctionField in item)
+                        {
+                            Auction auction = new Auction(auctionField.AuctionId,auctionField.CurrentPrice,auctionField.EndsOn,auctionField.FirstBid,auctionField.Seller);
+                            yield return auction;
+                        }
                     }
                 }
                 else
@@ -108,15 +112,23 @@ namespace AuctionSite
                 var query = ctx.Sites
                             .Where(s => s.SiteName.Equals(Name))
                             .Select(s => s.Sessions);
+
+
                 if (query.Any())
                 {
                     foreach (var item in query)
                     {
-                        yield return (ISession)item;
+                        foreach (var sessionField in item)
+                        {
+                            Session session = new Session(sessionField.SessionId,sessionField.ValidUntill);
+                            yield return session;
+                        }
+
+
                     }
                 }
                 else
-                    throw new Exception("qualcosa è andato storto mentre cercavo di raccogliere le Sesioni");
+                    throw new Exception("qualcosa è andato storto mentre cercavo di raccogliere gli utenti");
 
 
             }
@@ -129,11 +141,20 @@ namespace AuctionSite
                 var query = ctx.Sites
                             .Where(s => s.SiteName.Equals(Name))
                             .Select(s => s.Users);
+                            
+                            
                 if (query.Any())
                 {
                     foreach (var item in query)
                     {
-                        yield return (IUser)item;
+                        foreach (var userField in item)
+                        {
+                            User user = new User(userField.Username);
+                            user.connectionString = connectionString;
+                            yield return user;
+                        }
+                        
+                        
                     }
                 }
                 else

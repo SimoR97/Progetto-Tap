@@ -164,7 +164,7 @@ namespace AuctionSite
         public ISite LoadSite(string connectionString, string name, IAlarmClock alarmClock)
         {
             CheckIfStringIsValid(connectionString);
-            if (!(null == name))
+            if (!(null == name||null == alarmClock ))
             {
                 if (name.Length >= DomainConstraints.MinSiteName && name.Length <= DomainConstraints.MaxSiteName)
                 {
@@ -176,11 +176,18 @@ namespace AuctionSite
                             var site = ctx.Sites.Where(s => s.SiteName.Equals(name));
                             if (site.Any())
                             {
+
                                 var item = site.FirstOrDefault();
-                                Site st = new Site(item.SiteName, item.TimeZone, item.SessionExpirationInSeconds, item.MinimunBidIncrement);
-                                st.alarmClock = alarmClock;
-                                st.connectionString = connectionString;
-                                return st;
+                                if (item.TimeZone == alarmClock.Timezone)
+                                {
+                                    Site st = new Site(item.SiteName, item.TimeZone, item.SessionExpirationInSeconds, item.MinimunBidIncrement);
+                                    st.alarmClock = alarmClock;
+                                    st.connectionString = connectionString;
+                                    return st;
+                                }
+                                else
+                                    throw new ArgumentException(nameof(alarmClock.Timezone) + "Different from : "+item.TimeZone);
+                            
                                 
                             }
                             else
@@ -195,8 +202,8 @@ namespace AuctionSite
                     throw new ArgumentException(nameof(name) + "the name lenght is < or > for the allowed length ");
 
             }
-
-            throw new ArgumentNullException(nameof(name));
+            else
+                throw new ArgumentNullException(nameof(name));
         }
 
         public void Setup(string connectionString)
