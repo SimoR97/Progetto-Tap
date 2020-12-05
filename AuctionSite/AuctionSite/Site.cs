@@ -120,7 +120,8 @@ namespace AuctionSite
                     {
                         foreach (var sessionField in item)
                         {
-                            Session session = new Session(sessionField.SessionId,sessionField.ValidUntill);
+                            User usr = sessionField
+                            Session session = new Session(sessionField.SessionId,sessionField.ValidUntill,sessionField.User);
                             yield return session;
                         }
 
@@ -166,7 +167,36 @@ namespace AuctionSite
 
         public ISession Login(string username, string password)
         {
-            throw new NotImplementedException();
+            if (!(null == username || null == password))
+            {
+                if ((username.Length >= DomainConstraints.MinUserName && username.Length <= DomainConstraints.MaxSiteName && password.Length >= DomainConstraints.MinUserPassword))
+                {
+                    using (var ctx = new AuctionContext(connectionString))
+                    {
+
+                        var query = ctx.Users
+                                    .Where(s => s.Username.Equals(username) && s.Password.Equals(password))
+                                    .Select(s => s.Sessions);
+                        if(query.Any())
+                        {
+                            foreach (var item in query)
+                            {
+                                foreach (var sessions in item)
+                                {
+                                    if (sessions.ValidUntill > DateTime.Now)
+                                    {
+                                        Session session = new Session (sessions.SessionId,sessions.ValidUntill,sessions.User)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                    throw new ArgumentException();
+            }
+            else
+                throw new ArgumentNullException();
         }
     }
 }

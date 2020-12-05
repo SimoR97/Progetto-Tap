@@ -57,7 +57,7 @@ namespace AuctionSite
                     {
                         if (sessionExpirationTimeInSeconds >= 0 && minimumBidIncrement >= 0)
                         {
-                            //if 
+                          
                             using (var ctx = new AuctionContext(connectionString))
                             {
                                 if (CheckConnection(ctx))

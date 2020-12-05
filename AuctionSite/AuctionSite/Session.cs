@@ -9,12 +9,18 @@ namespace AuctionSite
 {
     public class Session : ISession
     {
-        public string Id => throw new NotImplementedException();
+        public string Id { get; }
 
-        public DateTime ValidUntil => throw new NotImplementedException();
+        public DateTime ValidUntil { get; }
 
-        public IUser User => throw new NotImplementedException();
+        public IUser User { get; }
 
+        public Session(string id,DateTime validUntil,User user)
+        {
+            Id = id;
+            ValidUntil = validUntil;
+            User = user;
+        }
         public IAuction CreateAuction(string description, DateTime endsOn, double startingPrice)
         {
             throw new NotImplementedException();
