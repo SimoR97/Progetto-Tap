@@ -13,6 +13,7 @@ namespace AuctionSite
 
         public DateTime EndsOn => throw new NotImplementedException();
 
+        public Auction() { }
         public bool BidOnAuction(ISession session, double offer)
         {
             throw new NotImplementedException();

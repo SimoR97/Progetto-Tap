@@ -30,14 +30,34 @@ namespace AuctionSite
 
         public void CleanupSessions()
         {
-            throw new NotImplementedException();
+            using (var ctx = new AuctionContext(connectionString))
+            {
+
+                var sessionsToClean = ctx.Sessions
+                                        .Where(s => s.SiteName.Equals(Name) && s.ValidUntill < DateTime.Now);
+
+                //controllare se il tempo di durata della sessione(oggetto) è scaduto [da implementare]
+                try
+                {
+                    ctx.Sessions.RemoveRange(sessionsToClean);
+                    ctx.SaveChanges();
+                    
+                }
+                catch (Exception e)
+                {
+
+                    throw new Exception(e.InnerException + nameof(e));
+                }
+               
+                            
+            }
         }
 
         public void CreateUser(string username, string password)
         {
             if (!(null == username || null == password))
             {
-                if (username.Length >= DomainConstraints.MinUserName && username.Length <= DomainConstraints.MaxSiteName && password.Length >= DomainConstraints.MinUserPassword)
+                if (username.Length >= DomainConstraints.MinUserName && username.Length <= DomainConstraints.MaxUserName && password.Length >= DomainConstraints.MinUserPassword)
                 {
                     using (var ctx = new AuctionContext(connectionString))
                     {
@@ -72,7 +92,22 @@ namespace AuctionSite
 
         public void Delete()
         {
-            throw new NotImplementedException();
+            using (var ctx = new AuctionContext(connectionString))
+            {
+                var siteToDelete = ctx.Sites
+                                .Where(s => s.SiteName.Equals(Name))
+                                .SingleOrDefault();
+                try
+                {
+                    ctx.Sites.Remove(siteToDelete);
+                    ctx.SaveChanges();
+                }
+                catch (Exception e )
+                {
+
+                    throw new Exception(e.Message);
+                }
+            }
         }
 
         public IEnumerable<IAuction> GetAuctions(bool onlyNotEnded)
@@ -88,8 +123,9 @@ namespace AuctionSite
                     {
                         foreach (var auctionField in item)
                         {
-                            Auction auction = new Auction(auctionField.AuctionId,auctionField.CurrentPrice,auctionField.EndsOn,auctionField.FirstBid,auctionField.Seller);
+                            Auction auction = new Auction();//(auctionField.AuctionId,auctionField.CurrentPrice,auctionField.EndsOn,auctionField.FirstBid,auctionField.Seller);
                             yield return auction;
+                           
                         }
                     }
                 }
@@ -102,7 +138,25 @@ namespace AuctionSite
 
         public ISession GetSession(string sessionId)
         {
-            throw new NotImplementedException();
+            if (!(null == sessionId))
+            {
+                using (var ctx = new AuctionContext(connectionString))
+                {
+                    var query = ctx.Sessions
+                                .Where(s => s.SessionId.Equals(sessionId))
+                                .FirstOrDefault();
+                    if (!(null == query))
+                    {
+                        return new Session(query.SessionId, query.ValidUntill, new User(query.Username));
+                    }
+                    else
+                        return null;
+
+                                
+                }
+            }
+            else
+                throw new ArgumentNullException(nameof(sessionId) + " must not be null");
         }
 
         public IEnumerable<ISession> GetSessions()
@@ -120,8 +174,8 @@ namespace AuctionSite
                     {
                         foreach (var sessionField in item)
                         {
-                            User usr = sessionField
-                            Session session = new Session(sessionField.SessionId,sessionField.ValidUntill,sessionField.User);
+                            User usr = new User(sessionField.Username);
+                            Session session = new Session(sessionField.SessionId,sessionField.ValidUntill, usr);
                             yield return session;
                         }
 
@@ -175,21 +229,44 @@ namespace AuctionSite
                     {
 
                         var query = ctx.Users
-                                    .Where(s => s.Username.Equals(username) && s.Password.Equals(password))
-                                    .Select(s => s.Sessions);
-                        if(query.Any())
+                                    .Where(s => s.Username.Equals(username) && s.Password.Equals(password) && s.SiteName.Equals(Name)).First();
+                                    
+                        if(!(null == query))
                         {
-                            foreach (var item in query)
-                            {
-                                foreach (var sessions in item)
+                            
+                                foreach (var sessions in query.Sessions)
                                 {
-                                    if (sessions.ValidUntill > DateTime.Now)
+
+                                
+                                   
+                                    if (sessions.ValidUntill > DateTime.Now )//|| alarmClock.)
                                     {
-                                        Session session = new Session (sessions.SessionId,sessions.ValidUntill,sessions.User)
+                                        Session session = new Session(sessions.SessionId, sessions.ValidUntill, new User(sessions.Username));
+                                        return session;
                                     }
                                 }
+
+
+                            
+
+                            var newSession = new SessionImpl(alarmClock.Now.AddSeconds(SessionExpirationInSeconds), username, Name);
+                            try
+                            {
+                                ctx.Sessions.Add(newSession);
+                                ctx.SaveChanges();
                             }
+                            catch (Exception e)
+                            {
+
+                                throw new Exception(e.Message);
+                            }
+
+                            Session sessionsx = new Session(newSession.SessionId, newSession.ValidUntill, new User(username));
+                            return sessionsx;
                         }
+
+                        return null;
+                        
                     }
                 }
                 else
@@ -198,5 +275,7 @@ namespace AuctionSite
             else
                 throw new ArgumentNullException();
         }
+
+
     }
 }
