@@ -28,16 +28,26 @@ namespace AuctionSite
             MinimumBidIncrement = minimunBidIncrement;
         }
 
-        
+        private void isDeleted()
+        {
+            using (var ctx = new AuctionContext(connectionString) )
+            {
+              var site =  ctx.Sites.Where(s => s.SiteName.Equals(Name)).SingleOrDefault();
+                if (null == site)
+                    throw new InvalidOperationException("the site has been deleted");
+            }
+                   
+          
+        }
         public void CleanupSessions()
         {
             using (var ctx = new AuctionContext(connectionString))
             {
+                isDeleted();
+                var sessionsToClean = ctx.Sites
+                                        .Where(s => s.SiteName.Equals(Name))
+                                        .Select(s => s.Sessions.Where(a => a.ValidUntill <= alarmClock.Now)).SingleOrDefault();
 
-                var sessionsToClean = ctx.Sessions
-                                        .Where(s => s.SiteName.Equals(Name) && s.ValidUntill < DateTime.Now);
-
-                //controllare se il tempo di durata della sessione(oggetto) è scaduto [da implementare]
                 try
                 {
                     ctx.Sessions.RemoveRange(sessionsToClean);
@@ -100,18 +110,21 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(connectionString))
             {
+                isDeleted();
                 var siteToDelete = ctx.Sites
                                 .Where(s => s.SiteName.Equals(Name))
                                 .SingleOrDefault();
                 try
                 {
-
+                    ctx.Auctions.RemoveRange(siteToDelete.Auctions);
+                    ctx.Sessions.RemoveRange(siteToDelete.Sessions);
+                    ctx.Users.RemoveRange(siteToDelete.Users);
                     ctx.Sites.Remove(siteToDelete);
                     ctx.SaveChanges();
                 }
                 catch (Exception e )
                 {
-                    throw new InvalidOperationException(e.Message);
+                    throw new Exception (e.Message + e.InnerException);
                 }
             }
         }
@@ -120,6 +133,7 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(connectionString))
             {
+                isDeleted();
                 var query = ctx.Sites
                             .Where(s => s.SiteName.Equals(Name))
                             .Select(s => s.Auctions);
@@ -148,11 +162,14 @@ namespace AuctionSite
             {
                 using (var ctx = new AuctionContext(connectionString))
                 {
-                    var query = ctx.Sessions
-                                .Where(s => s.SessionId.Equals(sessionId))
+                    isDeleted();
+                    var query = ctx.Sites
+                                .Where(s => s.SiteName.Equals(Name))
+                                .Select(s => s.Sessions.Where(a => a.SessionId.Equals(sessionId)).FirstOrDefault())
                                 .SingleOrDefault();
+                    
                     if (null != query && query.ValidUntill > alarmClock.Now)
-                        return new Session(query.SessionId, query.ValidUntill, new User(query.Username)) { connectionString = connectionString };
+                        return new Session(query.SessionId, query.ValidUntill, new User(query.Username) { connectionString=connectionString}) { connectionString = connectionString ,alarmClock=alarmClock };
                     else
                         return null;
          
@@ -166,24 +183,19 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(connectionString))
             {
+                isDeleted();
                 var query = ctx.Sites
                             .Where(s => s.SiteName.Equals(Name))
                             .SingleOrDefault();
-                            
-                if (null != query)
-                {
-                    
-                    foreach (var sessionField in query.Sessions)
-                    {
-                        var result = GetSession(sessionField.SessionId);
-                        if (null !=result)
-                            yield return result ;
-                        
-                    }
-   
-                   
-                }
 
+                foreach (var sessionField in query.Sessions)
+                {
+                    var result = GetSession(sessionField.SessionId);
+                    if (null !=result)
+                        yield return result ;
+                        
+                }
+   
                
             }
             
@@ -195,28 +207,15 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(connectionString))
             {
+                isDeleted();
                 var query = ctx.Sites
                             .Where(s => s.SiteName.Equals(Name))
-                            .Select(s => s.Users);
-                            
-                            
-                if (query.Any())
-                {
-                    foreach (var item in query)
-                    {
-                        foreach (var userField in item)
-                        {
-                            User user = new User(userField.Username);
-                            user.connectionString = connectionString;
-                            yield return user;
-                        }
-                        
-                        
-                    }
-                }
-                else
-                    throw new Exception("qualcosa è andato storto mentre cercavo di raccogliere gli utenti");
-                    
+                             .SingleOrDefault();
+                List<IUser> list = new List<IUser>();
+                foreach (var userField in query.Users)
+                        list.Add(new User(userField.Username) { connectionString=connectionString});
+
+                return list;
 
             }
         }
@@ -229,7 +228,7 @@ namespace AuctionSite
                 {
                     using (var ctx = new AuctionContext(connectionString))
                     {
-
+                        isDeleted();
                         var query = ctx.Users
                                     .Where(s => s.Username.Equals(username) && s.Password.Equals(password) && s.SiteName.Equals(Name)).SingleOrDefault();
                                     
@@ -240,11 +239,8 @@ namespace AuctionSite
                             {
  
                                 if (sessions.ValidUntill > alarmClock.Now )
-                                {
-                                    Session session = new Session(sessions.SessionId, sessions.ValidUntill, new User(sessions.Username));
-                                    session.connectionString = connectionString;
-                                    return session;
-                                }
+                                    return new Session(sessions.SessionId, sessions.ValidUntill, new User(sessions.Username)) {connectionString=connectionString ,alarmClock=alarmClock }; 
+                                
                             }
                             var newSession = new SessionImpl(alarmClock.Now.AddSeconds(SessionExpirationInSeconds), username, Name);
                             try
@@ -258,9 +254,8 @@ namespace AuctionSite
                                 throw new Exception(e.Message);
                             }
 
-                            Session sessionsx = new Session(newSession.SessionId, newSession.ValidUntill, new User(username));
-                            sessionsx.connectionString = connectionString;
-                            return sessionsx;
+                          
+                            return new Session(newSession.SessionId, newSession.ValidUntill, new User(username)) { connectionString=connectionString,alarmClock=alarmClock};
                         }
 
                         return null;

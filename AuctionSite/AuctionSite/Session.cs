@@ -47,6 +47,7 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(connectionString))
             {
+                if (!this.IsValid()) throw new InvalidOperationException();
                 var query = ctx.Sessions
                             .Where(s => s.SessionId.Equals(Id))
                             .SingleOrDefault();
