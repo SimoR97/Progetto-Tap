@@ -94,7 +94,7 @@ namespace AuctionSite
                         else
                             throw new InvalidOperationException("the site has been deleted");
 
-                        // username usr = new username(username, password);
+                        
                     }
 
                 }
@@ -136,23 +136,14 @@ namespace AuctionSite
                 isDeleted();
                 var query = ctx.Sites
                             .Where(s => s.SiteName.Equals(Name))
-                            .Select(s => s.Auctions);
-                if (query.Any())
+                            .SingleOrDefault();
+                   
+                foreach (var auctionField in query.Auctions)
                 {
-                    foreach (var item in query)
-                    {
-                        foreach (var auctionField in item)
-                        {
-                            Auction auction = new Auction();//(auctionField.AuctionId,auctionField.CurrentPrice,auctionField.EndsOn,auctionField.FirstBid,auctionField.Seller);
-                            yield return auction;
+                    //(auctionField.AuctionId,auctionField.CurrentPrice,auctionField.EndsOn,auctionField.FirstBid,auctionField.Seller);
+                    yield return new Auction(auctionField.AuctionId, new User(auctionField.Seller.Username), auctionField.Description, auctionField.EndsOn,auctionField.SiteName) { ConnectionString=connectionString,AlarmClock=alarmClock}; 
                            
-                        }
-                    }
                 }
-                else
-                    throw new Exception("qualcosa è andato storto mentre cercavo di raccogliere le Aste");
-
-
             }
         }
 
@@ -169,7 +160,7 @@ namespace AuctionSite
                                 .SingleOrDefault();
                     
                     if (null != query && query.ValidUntill > alarmClock.Now)
-                        return new Session(query.SessionId, query.ValidUntill, new User(query.Username) { connectionString=connectionString}) { connectionString = connectionString ,alarmClock=alarmClock };
+                        return new Session(query.SessionId, query.ValidUntill, new User(query.Username) { connectionString=connectionString}) { ConnectionString = connectionString ,AlarmClock=alarmClock };
                     else
                         return null;
          
@@ -239,7 +230,12 @@ namespace AuctionSite
                             {
  
                                 if (sessions.ValidUntill > alarmClock.Now )
-                                    return new Session(sessions.SessionId, sessions.ValidUntill, new User(sessions.Username)) {connectionString=connectionString ,alarmClock=alarmClock }; 
+                                {
+                                    sessions.ValidUntill = alarmClock.Now.AddSeconds(SessionExpirationInSeconds);
+                                    ctx.SaveChanges();
+                                    return new Session(sessions.SessionId, sessions.ValidUntill, new User(sessions.Username)) { ConnectionString = connectionString, AlarmClock = alarmClock };
+                                }
+                                    
                                 
                             }
                             var newSession = new SessionImpl(alarmClock.Now.AddSeconds(SessionExpirationInSeconds), username, Name);
@@ -255,7 +251,7 @@ namespace AuctionSite
                             }
 
                           
-                            return new Session(newSession.SessionId, newSession.ValidUntill, new User(username)) { connectionString=connectionString,alarmClock=alarmClock};
+                            return new Session(newSession.SessionId, newSession.ValidUntill, new User(username)) { ConnectionString=connectionString,AlarmClock=alarmClock};
                         }
 
                         return null;

@@ -56,7 +56,7 @@ namespace AuctionSite
         public string Username { get; set; }
         public virtual UserImpl Seller { get; set; }
         public AuctionImpl() { }
-        public AuctionImpl(string description, DateTime endsOn, double startingPrice, string siteName, string seller)
+        public AuctionImpl(string description, DateTime endsOn, double startingPrice, string siteName, string seller,string sessionId)
         {
             Description = description;
             EndsOn = endsOn;
@@ -66,6 +66,7 @@ namespace AuctionSite
             CurrentWinner = null;
             SiteName = siteName;
             Username = seller;
+            SessionId = sessionId;
 
         }
 
