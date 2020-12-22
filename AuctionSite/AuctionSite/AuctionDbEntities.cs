@@ -55,9 +55,12 @@ namespace AuctionSite
         [ForeignKey("Seller")]
         public string Username { get; set; }
         public virtual UserImpl Seller { get; set; }
+        private int idValue = 0 ;
         public AuctionImpl() { }
         public AuctionImpl(string description, DateTime endsOn, double startingPrice, string siteName, string seller,string sessionId)
         {
+            idValue += 1;
+            AuctionId = idValue;
             Description = description;
             EndsOn = endsOn;
             CurrentPrice = startingPrice;
@@ -67,7 +70,7 @@ namespace AuctionSite
             SiteName = siteName;
             Username = seller;
             SessionId = sessionId;
-
+            
         }
 
     }

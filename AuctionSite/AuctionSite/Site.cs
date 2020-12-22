@@ -137,13 +137,12 @@ namespace AuctionSite
                 var query = ctx.Sites
                             .Where(s => s.SiteName.Equals(Name))
                             .SingleOrDefault();
-                   
+                List<IAuction> list = new List<IAuction>();
                 foreach (var auctionField in query.Auctions)
-                {
-                    //(auctionField.AuctionId,auctionField.CurrentPrice,auctionField.EndsOn,auctionField.FirstBid,auctionField.Seller);
-                    yield return new Auction(auctionField.AuctionId, new User(auctionField.Seller.Username), auctionField.Description, auctionField.EndsOn,auctionField.SiteName) { ConnectionString=connectionString,AlarmClock=alarmClock}; 
-                           
-                }
+                    list.Add(new Auction(auctionField.AuctionId, new User(auctionField.Seller.Username), auctionField.Description, auctionField.EndsOn, auctionField.SiteName) { ConnectionString = connectionString, AlarmClock = alarmClock });
+                //(auctionField.AuctionId,auctionField.CurrentPrice,auctionField.EndsOn,auctionField.FirstBid,auctionField.Seller);
+                return list;      
+                
             }
         }
 

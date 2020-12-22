@@ -26,22 +26,6 @@ namespace AuctionSite
             User = user;
         }
 
-        private int TakeAuctionId(string description,DateTime endsOn)
-        {
-            using (var ctx = new AuctionContext(ConnectionString))
-            {
-                var auctionId = ctx.Sessions
-                                .Where(s => s.SessionId.Equals(Id))
-                                .Select(s => s.Auctions)
-                                .SingleOrDefault();
-                foreach (var item in auctionId)
-                {
-                    if (item.Description.Equals(description) && item.EndsOn.CompareTo(endsOn) == 0)
-                        return item.AuctionId;
-                }
-                return -1;
-            }
-        }
         public IAuction CreateAuction(string description, DateTime endsOn, double startingPrice)
         {
             if (null != description)
@@ -49,11 +33,13 @@ namespace AuctionSite
                 if (description.Length > 0)
                 {
                     if (startingPrice >= 0)
-                    {
-                        if (endsOn > AlarmClock.Now)
+                    { 
+                        if (IsValid())
                         {
-                            if (IsValid())
+                            
+                            if (endsOn.CompareTo(AlarmClock.Now)>=0)
                             {
+                            
                                 using (var ctx = new AuctionContext(ConnectionString))
                                 {
                                     var query = ctx.Sessions
@@ -63,21 +49,22 @@ namespace AuctionSite
                                     this.ValidUntil = AlarmClock.Now.AddSeconds(query.Site.SessionExpirationInSeconds);
                                     query.ValidUntill = this.ValidUntil;
 
-                                    ctx.Auctions.Add(new AuctionImpl(description, endsOn, startingPrice, query.SiteName, query.Username,query.SessionId));
+                                    var auction = new AuctionImpl(description, endsOn, startingPrice, query.SiteName, query.Username, query.SessionId);
+                                    ctx.Auctions.Add(auction);
                                     ctx.SaveChanges();
                                     
-                                    return new Auction(TakeAuctionId(description,endsOn), new User(query.Username) { connectionString = ConnectionString }, description, endsOn,query.SiteName) { ConnectionString = ConnectionString, AlarmClock = AlarmClock };
+                                    return new Auction(auction.AuctionId, new User(auction.Username) { connectionString = ConnectionString }, description, endsOn, auction.SiteName) { ConnectionString = ConnectionString, AlarmClock = AlarmClock };
 
                                 }
                             }
                             else
-                                throw new InvalidOperationException();
+                                throw new UnavailableTimeMachineException(nameof(endsOn) + " set  to a future time ");
 
                         }
                         else
-                            throw new UnavailableTimeMachineException(nameof(endsOn) + "set it to a future time ");
+                            throw new  InvalidOperationException();
 
-                    }
+                }
                     else
                         throw new ArgumentOutOfRangeException(nameof(startingPrice) + "must be positive");
 
@@ -111,7 +98,7 @@ namespace AuctionSite
                             .Where(s => s.SessionId.Equals(Id))
                             .SingleOrDefault();
 
-                this.ValidUntil = AlarmClock.Now;
+                this.ValidUntil = AlarmClock.Now.Subtract(AlarmClock.Now.TimeOfDay);
                 query.ValidUntill = this.ValidUntil;
                 ctx.SaveChanges();
             }

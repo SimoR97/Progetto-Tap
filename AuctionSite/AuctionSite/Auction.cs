@@ -36,7 +36,13 @@ namespace AuctionSite
 
         public double CurrentPrice()
         {
-            throw new NotImplementedException();
+            using (var ctx = new AuctionContext(ConnectionString))
+            {
+                var query = ctx.Auctions
+                            .Where(s => s.AuctionId.Equals(Id) && s.SiteName.Equals(SiteName))
+                            .SingleOrDefault();
+                return query.CurrentPrice;
+            }
         }
 
         public IUser CurrentWinner()
