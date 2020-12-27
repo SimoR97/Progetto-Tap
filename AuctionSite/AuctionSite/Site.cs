@@ -139,7 +139,14 @@ namespace AuctionSite
                             .SingleOrDefault();
                 List<IAuction> list = new List<IAuction>();
                 foreach (var auctionField in query.Auctions)
-                    list.Add(new Auction(auctionField.AuctionId, new User(auctionField.Seller.Username,auctionField.Seller.SiteName), auctionField.Description, auctionField.EndsOn, auctionField.SiteName) { ConnectionString = connectionString, AlarmClock = alarmClock });
+                    if (onlyNotEnded)
+                    {
+                        if (auctionField.EndsOn > alarmClock.Now)
+                            list.Add(new Auction(auctionField.AuctionId, new User(auctionField.Seller.Username, auctionField.Seller.SiteName), auctionField.Description, auctionField.EndsOn, auctionField.SiteName) { ConnectionString = connectionString, AlarmClock = alarmClock });
+                    }
+                    else
+                        list.Add(new Auction(auctionField.AuctionId, new User(auctionField.Seller.Username, auctionField.Seller.SiteName), auctionField.Description, auctionField.EndsOn, auctionField.SiteName) { ConnectionString = connectionString, AlarmClock = alarmClock });
+
                 //(auctionField.AuctionId,auctionField.CurrentPrice,auctionField.EndsOn,auctionField.FirstBid,auctionField.Seller);
                 return list;      
                 

@@ -29,13 +29,22 @@ namespace AuctionSite
             SiteName = siteName;
         
         }
+        public bool IsDeleted()
+        {
+            using (var ctx = new AuctionContext(ConnectionString))
+            {
+                var auction = ctx.Auctions.Where(s => s.AuctionId.Equals(Id)).SingleOrDefault();
+                if (null == auction) return true;
+                return false;
+            }
+        }
         public bool BidOnAuction(ISession session, double offer)
         {
-            if (EndsOn > AlarmClock.Now)
+            if (EndsOn > AlarmClock.Now && !IsDeleted())
             {
                 if (offer > 0)
                 {
-                    if (null == session)
+                    if (null != session)
                     {
                         using (var ctx = new AuctionContext(ConnectionString))
                         {
@@ -54,7 +63,9 @@ namespace AuctionSite
                                             .Where(s => s.AuctionId.Equals(Id))
                                             .SingleOrDefault();
 
-                                session.ValidUntil = AlarmClock.Now.AddSeconds(auction.Site.SessionExpirationInSeconds) ;
+                                var sessionObj = session as Session;
+
+                                sessionObj.RenewedSession(session);
 
                                 if (CurrentWinner() == session.User && offer < auction.HighestBid + auction.Site.MinimunBidIncrement ||
                                     session.User != CurrentWinner() && offer < CurrentPrice() ||
@@ -65,6 +76,22 @@ namespace AuctionSite
 
                                     auction.HighestBid = offer;
                                     auction.CurrentWinner = session.User.Username;
+                                    auction.FirstBid = false;
+                                }
+                                else if (CurrentWinner() == session.User)
+                                {
+                                    auction.HighestBid = offer;
+
+                                }
+                                else if (auction.FirstBid == false && CurrentWinner()!= session.User && offer > auction.HighestBid)
+                                {
+                                    auction.CurrentPrice = Math.Min(offer, auction.HighestBid + auction.Site.MinimunBidIncrement);
+                                    auction.HighestBid = offer;
+                                    auction.CurrentWinner = session.User.Username;
+                                }
+                                else if (auction.FirstBid == false && CurrentWinner() != session.User && offer <= auction.HighestBid)
+                                {
+                                    auction.CurrentPrice = Math.Min(offer + auction.Site.MinimunBidIncrement, auction.HighestBid );
                                 }
 
                                 ctx.SaveChanges();
@@ -89,6 +116,7 @@ namespace AuctionSite
 
         public double CurrentPrice()
         {
+            if (IsDeleted()) throw new InvalidOperationException();
             using (var ctx = new AuctionContext(ConnectionString))
             {
                 var query = ctx.Auctions
@@ -102,6 +130,7 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(ConnectionString))
             {
+                if (IsDeleted()) throw new InvalidOperationException();
                 var query = ctx.Auctions
                             .Where(s => s.AuctionId.Equals(Id) && s.SiteName.Equals(SiteName))
                             .SingleOrDefault();
@@ -118,6 +147,7 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(ConnectionString))
             {
+                if (IsDeleted()) throw new InvalidOperationException();
                 var query = ctx.Auctions
                             .Where(s => s.AuctionId.Equals(Id) && s.SiteName.Equals(SiteName))
                             .SingleOrDefault();

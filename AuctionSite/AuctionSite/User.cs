@@ -17,9 +17,28 @@ namespace AuctionSite
             Username = username;
             SiteName = siteName;
         }
+        public bool IsDeleted()
+        {
+            using (var ctx = new AuctionContext(ConnectionString))
+            {
+                var auction = ctx.Users.Where(s => s.Username.Equals(Username)).SingleOrDefault();
+                if (null == auction) return true;
+                return false;
+            }
+        }
         public void Delete()
         {
-            throw new NotImplementedException();
+            using (var ctx = new AuctionContext(ConnectionString))
+            {
+                if (IsDeleted()) throw new InvalidOperationException();
+                var userToDelete = ctx.Users
+                            .Where(s => s.Username.Equals(Username) && s.SiteName.Equals(SiteName))
+                            .SingleOrDefault();
+
+                ctx.Users.Remove(userToDelete);
+                ctx.SaveChanges();
+
+            }
         }
 
         public IEnumerable<IAuction> WonAuctions()
