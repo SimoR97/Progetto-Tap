@@ -28,7 +28,7 @@ namespace AuctionSite
             MinimumBidIncrement = minimunBidIncrement;
         }
 
-        private void isDeleted()
+        private void IsDeleted()
         {
             using (var ctx = new AuctionContext(connectionString) )
             {
@@ -43,7 +43,7 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(connectionString))
             {
-                isDeleted();
+                IsDeleted();
                 var sessionsToClean = ctx.Sites
                                         .Where(s => s.SiteName.Equals(Name))
                                         .Select(s => s.Sessions.Where(a => a.ValidUntill <= alarmClock.Now)).SingleOrDefault();
@@ -110,7 +110,7 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(connectionString))
             {
-                isDeleted();
+                IsDeleted();
                 var siteToDelete = ctx.Sites
                                 .Where(s => s.SiteName.Equals(Name))
                                 .SingleOrDefault();
@@ -133,13 +133,13 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(connectionString))
             {
-                isDeleted();
+                IsDeleted();
                 var query = ctx.Sites
                             .Where(s => s.SiteName.Equals(Name))
                             .SingleOrDefault();
                 List<IAuction> list = new List<IAuction>();
                 foreach (var auctionField in query.Auctions)
-                    list.Add(new Auction(auctionField.AuctionId, new User(auctionField.Seller.Username), auctionField.Description, auctionField.EndsOn, auctionField.SiteName) { ConnectionString = connectionString, AlarmClock = alarmClock });
+                    list.Add(new Auction(auctionField.AuctionId, new User(auctionField.Seller.Username,auctionField.Seller.SiteName), auctionField.Description, auctionField.EndsOn, auctionField.SiteName) { ConnectionString = connectionString, AlarmClock = alarmClock });
                 //(auctionField.AuctionId,auctionField.CurrentPrice,auctionField.EndsOn,auctionField.FirstBid,auctionField.Seller);
                 return list;      
                 
@@ -152,14 +152,14 @@ namespace AuctionSite
             {
                 using (var ctx = new AuctionContext(connectionString))
                 {
-                    isDeleted();
+                    IsDeleted();
                     var query = ctx.Sites
                                 .Where(s => s.SiteName.Equals(Name))
                                 .Select(s => s.Sessions.Where(a => a.SessionId.Equals(sessionId)).FirstOrDefault())
                                 .SingleOrDefault();
                     
                     if (null != query && query.ValidUntill > alarmClock.Now)
-                        return new Session(query.SessionId, query.ValidUntill, new User(query.Username) { connectionString=connectionString}) { ConnectionString = connectionString ,AlarmClock=alarmClock };
+                        return new Session(query.SessionId, query.ValidUntill, new User(query.Username,query.SiteName) { ConnectionString=connectionString}) { ConnectionString = connectionString ,AlarmClock=alarmClock };
                     else
                         return null;
          
@@ -173,7 +173,7 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(connectionString))
             {
-                isDeleted();
+                IsDeleted();
                 var query = ctx.Sites
                             .Where(s => s.SiteName.Equals(Name))
                             .SingleOrDefault();
@@ -197,13 +197,13 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(connectionString))
             {
-                isDeleted();
+                IsDeleted();
                 var query = ctx.Sites
                             .Where(s => s.SiteName.Equals(Name))
                              .SingleOrDefault();
                 List<IUser> list = new List<IUser>();
                 foreach (var userField in query.Users)
-                        list.Add(new User(userField.Username) { connectionString=connectionString});
+                        list.Add(new User(userField.Username,userField.SiteName) { ConnectionString=connectionString});
 
                 return list;
 
@@ -218,7 +218,7 @@ namespace AuctionSite
                 {
                     using (var ctx = new AuctionContext(connectionString))
                     {
-                        isDeleted();
+                        IsDeleted();
                         var query = ctx.Users
                                     .Where(s => s.Username.Equals(username) && s.Password.Equals(password) && s.SiteName.Equals(Name)).SingleOrDefault();
                                     
@@ -232,7 +232,7 @@ namespace AuctionSite
                                 {
                                     sessions.ValidUntill = alarmClock.Now.AddSeconds(SessionExpirationInSeconds);
                                     ctx.SaveChanges();
-                                    return new Session(sessions.SessionId, sessions.ValidUntill, new User(sessions.Username)) { ConnectionString = connectionString, AlarmClock = alarmClock };
+                                    return new Session(sessions.SessionId, sessions.ValidUntill, new User(sessions.Username,sessions.SiteName)) { ConnectionString = connectionString, AlarmClock = alarmClock };
                                 }
                                     
                                 
@@ -250,7 +250,7 @@ namespace AuctionSite
                             }
 
                           
-                            return new Session(newSession.SessionId, newSession.ValidUntill, new User(username)) { ConnectionString=connectionString,AlarmClock=alarmClock};
+                            return new Session(newSession.SessionId, newSession.ValidUntill, new User(username,Name)) { ConnectionString=connectionString,AlarmClock=alarmClock};
                         }
 
                         return null;

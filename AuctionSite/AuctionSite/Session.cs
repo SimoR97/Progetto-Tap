@@ -25,7 +25,25 @@ namespace AuctionSite
             ValidUntil = validUntil;
             User = user;
         }
-
+        //rinnovo la sessione  se  è valida  (non scaduta)
+        public void RenewedSession(ISession toRenew)
+        {
+            using (var ctx = new AuctionContext(ConnectionString))
+            {
+                var query = ctx.Sessions
+                            .Where(s => s.SessionId.Equals(Id))
+                            .SingleOrDefault();
+                if (IsValid())
+                {
+                    this.ValidUntil = AlarmClock.Now.AddSeconds(query.Site.SessionExpirationInSeconds);
+                    query.ValidUntill = this.ValidUntil;
+                    ctx.SaveChanges();
+                    
+                }
+                
+               
+            }
+        }
         public IAuction CreateAuction(string description, DateTime endsOn, double startingPrice)
         {
             if (null != description)
@@ -46,14 +64,13 @@ namespace AuctionSite
                                                 .Where(s => s.SessionId.Equals(Id))
                                                 .SingleOrDefault();
 
-                                    this.ValidUntil = AlarmClock.Now.AddSeconds(query.Site.SessionExpirationInSeconds);
-                                    query.ValidUntill = this.ValidUntil;
+                                    RenewedSession(this);
 
                                     var auction = new AuctionImpl(description, endsOn, startingPrice, query.SiteName, query.Username, query.SessionId);
                                     ctx.Auctions.Add(auction);
                                     ctx.SaveChanges();
                                     
-                                    return new Auction(auction.AuctionId, new User(auction.Username) { connectionString = ConnectionString }, description, endsOn, auction.SiteName) { ConnectionString = ConnectionString, AlarmClock = AlarmClock };
+                                    return new Auction(auction.AuctionId, new User(auction.Username,auction.SiteName) { ConnectionString = ConnectionString }, description, endsOn, auction.SiteName) { ConnectionString = ConnectionString, AlarmClock = AlarmClock };
 
                                 }
                             }

@@ -10,11 +10,12 @@ namespace AuctionSite
     public class User : IUser
     {
         public string Username { get; }
-
-        public string connectionString { get; set; }
-        public User(string username)
+        public string ConnectionString { get; set; }
+        public string SiteName { get; set; }
+        public User(string username,string siteName)
         {
             Username = username;
+            SiteName = siteName;
         }
         public void Delete()
         {
