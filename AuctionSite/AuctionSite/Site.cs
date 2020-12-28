@@ -50,9 +50,7 @@ namespace AuctionSite
 
                 try
                 {
-                    foreach (var auction in sessionsToClean)
-                        ctx.Auctions.RemoveRange(auction.Auctions);
-
+                   
                     ctx.Sessions.RemoveRange(sessionsToClean);
                     ctx.SaveChanges();
                     

@@ -78,7 +78,7 @@ namespace AuctionSite
                                     auction.CurrentWinner = session.User.Username;
                                     auction.FirstBid = false;
                                 }
-                                else if (CurrentWinner() == session.User)
+                                else if (CurrentWinner().Equals(session.User))
                                 {
                                     auction.HighestBid = offer;
 
@@ -135,7 +135,7 @@ namespace AuctionSite
                             .Where(s => s.AuctionId.Equals(Id) && s.SiteName.Equals(SiteName))
                             .SingleOrDefault();
                 if (!query.FirstBid && query.CurrentWinner != null)
-                    return new User(query.CurrentWinner,query.SiteName) { ConnectionString = ConnectionString };
+                    return new User(query.CurrentWinner,query.SiteName) { ConnectionString = ConnectionString,AlarmClock=AlarmClock };
                 else
                     return null;
                             

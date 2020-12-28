@@ -31,7 +31,7 @@ namespace AuctionSite
             using (var ctx = new AuctionContext(ConnectionString))
             {
                 var query = ctx.Sessions
-                            .Where(s => s.SessionId.Equals(Id))
+                            .Where(s => s.SessionId.Equals(toRenew.Id))
                             .SingleOrDefault();
                 if (IsValid())
                 {
@@ -60,13 +60,13 @@ namespace AuctionSite
                             
                                 using (var ctx = new AuctionContext(ConnectionString))
                                 {
-                                    var query = ctx.Sessions
+                                    var session = ctx.Sessions
                                                 .Where(s => s.SessionId.Equals(Id))
                                                 .SingleOrDefault();
 
                                     RenewedSession(this);
 
-                                    var auction = new AuctionImpl(description, endsOn, startingPrice, query.SiteName, query.Username, query.SessionId);
+                                    var auction = new AuctionImpl(description, endsOn, startingPrice, session.SiteName, session.Username);
                                     ctx.Auctions.Add(auction);
                                     ctx.SaveChanges();
                                     

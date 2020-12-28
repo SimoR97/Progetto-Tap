@@ -49,15 +49,13 @@ namespace AuctionSite
         [ForeignKey("Site")]
         public string SiteName { get; set; }
         public virtual SiteImpl Site { get; set; }
-        [ForeignKey("Session")]
-        public string SessionId { get; set; }
-        public virtual SessionImpl Session { get; set; }
+       
         [ForeignKey("Seller")]
         public string Username { get; set; }
         public virtual UserImpl Seller { get; set; }
         private int idValue = 0 ;
         public AuctionImpl() { }
-        public AuctionImpl(string description, DateTime endsOn, double startingPrice, string siteName, string seller,string sessionId)
+        public AuctionImpl(string description, DateTime endsOn, double startingPrice, string siteName, string seller)
         {
             idValue += 1;
             AuctionId = idValue;
@@ -69,7 +67,7 @@ namespace AuctionSite
             CurrentWinner = null;
             SiteName = siteName;
             Username = seller;
-            SessionId = sessionId;
+           
             
         }
 
