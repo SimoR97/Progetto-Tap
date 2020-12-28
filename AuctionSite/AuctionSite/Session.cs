@@ -70,7 +70,7 @@ namespace AuctionSite
                                     ctx.Auctions.Add(auction);
                                     ctx.SaveChanges();
                                     
-                                    return new Auction(auction.AuctionId, new User(auction.Username,auction.SiteName) { ConnectionString = ConnectionString }, description, endsOn, auction.SiteName) { ConnectionString = ConnectionString, AlarmClock = AlarmClock };
+                                    return new Auction(auction.AuctionId, new User(auction.Username,auction.SiteName) { ConnectionString = ConnectionString, AlarmClock=AlarmClock }, description, endsOn, auction.SiteName) { ConnectionString = ConnectionString, AlarmClock = AlarmClock };
 
                                 }
                             }

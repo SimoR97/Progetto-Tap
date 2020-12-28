@@ -181,8 +181,8 @@ namespace AuctionSite
                                 if (item.TimeZone == alarmClock.Timezone)
                                 {
                                     Site st = new Site(item.SiteName, item.TimeZone, item.SessionExpirationInSeconds, item.MinimunBidIncrement);
-                                    st.alarmClock = alarmClock;
-                                    st.connectionString = connectionString;
+                                    st.AlarmClock = alarmClock;
+                                    st.ConnectionString = connectionString;
                                     return st;
                                 }
                                 else

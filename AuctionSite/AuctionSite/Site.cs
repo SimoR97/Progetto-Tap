@@ -17,8 +17,8 @@ namespace AuctionSite
         public int SessionExpirationInSeconds { get;  }
         public double MinimumBidIncrement { get;  }
 
-        public IAlarmClock alarmClock { get; set; }
-        public string connectionString { get; set; }
+        public IAlarmClock AlarmClock { get; set; }
+        public string ConnectionString { get; set; }
 
         public Site(string name,int timeZone,int sessionExpirationInSeconds,double minimunBidIncrement)
         {
@@ -30,7 +30,7 @@ namespace AuctionSite
 
         private void IsDeleted()
         {
-            using (var ctx = new AuctionContext(connectionString) )
+            using (var ctx = new AuctionContext(ConnectionString) )
             {
               var site =  ctx.Sites.Where(s => s.SiteName.Equals(Name)).SingleOrDefault();
                 if (null == site)
@@ -41,15 +41,18 @@ namespace AuctionSite
         }
         public void CleanupSessions()
         {
-            using (var ctx = new AuctionContext(connectionString))
+            using (var ctx = new AuctionContext(ConnectionString))
             {
                 IsDeleted();
                 var sessionsToClean = ctx.Sites
                                         .Where(s => s.SiteName.Equals(Name))
-                                        .Select(s => s.Sessions.Where(a => a.ValidUntill <= alarmClock.Now)).SingleOrDefault();
+                                        .Select(s => s.Sessions.Where(a => a.ValidUntill <= AlarmClock.Now)).SingleOrDefault();
 
                 try
                 {
+                    foreach (var auction in sessionsToClean)
+                        ctx.Auctions.RemoveRange(auction.Auctions);
+
                     ctx.Sessions.RemoveRange(sessionsToClean);
                     ctx.SaveChanges();
                     
@@ -70,9 +73,10 @@ namespace AuctionSite
             {
                 if (username.Length >= DomainConstraints.MinUserName && username.Length <= DomainConstraints.MaxUserName && password.Length >= DomainConstraints.MinUserPassword)
                 {
-                    using (var ctx = new AuctionContext(connectionString))
+                    using (var ctx = new AuctionContext(ConnectionString))
                     {
                         var query = ctx.Sites.Where(s => s.SiteName.Equals(Name)).Single();
+                        IsDeleted();
                         if (null != query)
                         {
                             foreach (var item in query.Users)
@@ -108,7 +112,7 @@ namespace AuctionSite
 
         public void Delete()
         {
-            using (var ctx = new AuctionContext(connectionString))
+            using (var ctx = new AuctionContext(ConnectionString))
             {
                 IsDeleted();
                 var siteToDelete = ctx.Sites
@@ -131,7 +135,7 @@ namespace AuctionSite
 
         public IEnumerable<IAuction> GetAuctions(bool onlyNotEnded)
         {
-            using (var ctx = new AuctionContext(connectionString))
+            using (var ctx = new AuctionContext(ConnectionString))
             {
                 IsDeleted();
                 var query = ctx.Sites
@@ -141,11 +145,11 @@ namespace AuctionSite
                 foreach (var auctionField in query.Auctions)
                     if (onlyNotEnded)
                     {
-                        if (auctionField.EndsOn > alarmClock.Now)
-                            list.Add(new Auction(auctionField.AuctionId, new User(auctionField.Seller.Username, auctionField.Seller.SiteName), auctionField.Description, auctionField.EndsOn, auctionField.SiteName) { ConnectionString = connectionString, AlarmClock = alarmClock });
+                        if (auctionField.EndsOn > AlarmClock.Now)
+                            list.Add(new Auction(auctionField.AuctionId, new User(auctionField.Seller.Username, auctionField.Seller.SiteName) { ConnectionString=ConnectionString,AlarmClock=AlarmClock}, auctionField.Description, auctionField.EndsOn, auctionField.SiteName) { ConnectionString = ConnectionString, AlarmClock = AlarmClock });
                     }
                     else
-                        list.Add(new Auction(auctionField.AuctionId, new User(auctionField.Seller.Username, auctionField.Seller.SiteName), auctionField.Description, auctionField.EndsOn, auctionField.SiteName) { ConnectionString = connectionString, AlarmClock = alarmClock });
+                        list.Add(new Auction(auctionField.AuctionId, new User(auctionField.Seller.Username, auctionField.Seller.SiteName) { ConnectionString = ConnectionString, AlarmClock = AlarmClock }, auctionField.Description, auctionField.EndsOn, auctionField.SiteName) { ConnectionString = ConnectionString, AlarmClock = AlarmClock });
 
                 //(auctionField.AuctionId,auctionField.CurrentPrice,auctionField.EndsOn,auctionField.FirstBid,auctionField.Seller);
                 return list;      
@@ -157,7 +161,7 @@ namespace AuctionSite
         {
             if (null != sessionId)
             {
-                using (var ctx = new AuctionContext(connectionString))
+                using (var ctx = new AuctionContext(ConnectionString))
                 {
                     IsDeleted();
                     var query = ctx.Sites
@@ -165,8 +169,8 @@ namespace AuctionSite
                                 .Select(s => s.Sessions.Where(a => a.SessionId.Equals(sessionId)).FirstOrDefault())
                                 .SingleOrDefault();
                     
-                    if (null != query && query.ValidUntill > alarmClock.Now)
-                        return new Session(query.SessionId, query.ValidUntill, new User(query.Username,query.SiteName) { ConnectionString=connectionString}) { ConnectionString = connectionString ,AlarmClock=alarmClock };
+                    if (null != query && query.ValidUntill > AlarmClock.Now)
+                        return new Session(query.SessionId, query.ValidUntill, new User(query.Username,query.SiteName) { ConnectionString=ConnectionString, AlarmClock =AlarmClock}) { ConnectionString = ConnectionString ,AlarmClock=AlarmClock };
                     else
                         return null;
          
@@ -178,7 +182,7 @@ namespace AuctionSite
 
         public IEnumerable<ISession> GetSessions()
         {
-            using (var ctx = new AuctionContext(connectionString))
+            using (var ctx = new AuctionContext(ConnectionString))
             {
                 IsDeleted();
                 var query = ctx.Sites
@@ -202,7 +206,7 @@ namespace AuctionSite
 
         public IEnumerable<IUser> GetUsers()
         {
-            using (var ctx = new AuctionContext(connectionString))
+            using (var ctx = new AuctionContext(ConnectionString))
             {
                 IsDeleted();
                 var query = ctx.Sites
@@ -210,7 +214,7 @@ namespace AuctionSite
                              .SingleOrDefault();
                 List<IUser> list = new List<IUser>();
                 foreach (var userField in query.Users)
-                        list.Add(new User(userField.Username,userField.SiteName) { ConnectionString=connectionString});
+                        list.Add(new User(userField.Username,userField.SiteName) { ConnectionString=ConnectionString , AlarmClock=AlarmClock});
 
                 return list;
 
@@ -223,7 +227,7 @@ namespace AuctionSite
             {
                 if ((username.Length >= DomainConstraints.MinUserName && username.Length <= DomainConstraints.MaxSiteName && password.Length >= DomainConstraints.MinUserPassword))
                 {
-                    using (var ctx = new AuctionContext(connectionString))
+                    using (var ctx = new AuctionContext(ConnectionString))
                     {
                         IsDeleted();
                         var query = ctx.Users
@@ -235,16 +239,16 @@ namespace AuctionSite
                             foreach (var sessions in query.Sessions)
                             {
  
-                                if (sessions.ValidUntill > alarmClock.Now )
+                                if (sessions.ValidUntill > AlarmClock.Now )
                                 {
-                                    sessions.ValidUntill = alarmClock.Now.AddSeconds(SessionExpirationInSeconds);
+                                    sessions.ValidUntill = AlarmClock.Now.AddSeconds(SessionExpirationInSeconds);
                                     ctx.SaveChanges();
-                                    return new Session(sessions.SessionId, sessions.ValidUntill, new User(sessions.Username,sessions.SiteName)) { ConnectionString = connectionString, AlarmClock = alarmClock };
+                                    return new Session(sessions.SessionId, sessions.ValidUntill, new User(sessions.Username,sessions.SiteName)) { ConnectionString = ConnectionString, AlarmClock = AlarmClock };
                                 }
                                     
                                 
                             }
-                            var newSession = new SessionImpl(alarmClock.Now.AddSeconds(SessionExpirationInSeconds), username, Name);
+                            var newSession = new SessionImpl(AlarmClock.Now.AddSeconds(SessionExpirationInSeconds), username, Name);
                             try
                             {
                                 ctx.Sessions.Add(newSession);
@@ -257,7 +261,7 @@ namespace AuctionSite
                             }
 
                           
-                            return new Session(newSession.SessionId, newSession.ValidUntill, new User(username,Name)) { ConnectionString=connectionString,AlarmClock=alarmClock};
+                            return new Session(newSession.SessionId, newSession.ValidUntill, new User(username, Name) { ConnectionString=ConnectionString,AlarmClock=AlarmClock}) { ConnectionString=ConnectionString,AlarmClock=AlarmClock};
                         }
 
                         return null;
