@@ -178,6 +178,11 @@ namespace AuctionSite
                 throw new ArgumentNullException(nameof(sessionId) + "sessionId  must not be null");
         }
 
+        internal void OnRingingEvent()
+        {
+            this.CleanupSessions();
+        }
+
         public IEnumerable<ISession> GetSessions()
         {
             using (var ctx = new AuctionContext(ConnectionString))

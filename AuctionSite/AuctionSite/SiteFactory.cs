@@ -11,7 +11,10 @@ using TAP2018_19.AuctionSite.Interfaces;
 namespace AuctionSite
 {
     public class SiteFactory : ISiteFactory
+
     {
+        //Definisco ogni quanto le sessioni scadute debbano esssere pulite (5 minuti) 
+        private const int CleanUpExpiredSessionsTime = 5 * 60 * 1000; 
         private static bool CheckConnection(AuctionContext ac)
         {
 
@@ -31,7 +34,7 @@ namespace AuctionSite
         }
 
 
-        private static bool CheckIfNull(string toCheck) { return toCheck.Equals(null); }
+        
 
         private static void CheckIfStringIsValid(string connectionString)
         {
@@ -180,10 +183,11 @@ namespace AuctionSite
                                 var item = site.FirstOrDefault();
                                 if (item.TimeZone == alarmClock.Timezone)
                                 {
-                                    Site st = new Site(item.SiteName, item.TimeZone, item.SessionExpirationInSeconds, item.MinimunBidIncrement);
-                                    st.AlarmClock = alarmClock;
-                                    st.ConnectionString = connectionString;
-                                    return st;
+                                    
+                                 Site siteNew = new Site(item.SiteName, item.TimeZone, item.SessionExpirationInSeconds, item.MinimunBidIncrement) { AlarmClock = alarmClock, ConnectionString = connectionString };
+                                    var alarm =alarmClock.InstantiateAlarm(CleanUpExpiredSessionsTime);
+                                    alarm.RingingEvent += siteNew.OnRingingEvent;
+                                    return siteNew;
                                 }
                                 else
                                     throw new ArgumentException(nameof(alarmClock.Timezone) + "Different from : "+item.TimeZone);
@@ -204,6 +208,11 @@ namespace AuctionSite
             }
             else
                 throw new ArgumentNullException(nameof(name));
+        }
+
+        private void Alarm_RingingEvent()
+        {
+            throw new NotImplementedException();
         }
 
         public void Setup(string connectionString)
