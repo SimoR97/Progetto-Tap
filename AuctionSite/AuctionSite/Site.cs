@@ -75,28 +75,22 @@ namespace AuctionSite
                     {
                         var query = ctx.Sites.Where(s => s.SiteName.Equals(Name)).Single();
                         IsDeleted();
-                        if (null != query)
+                        foreach (var item in query.Users)
                         {
-                            foreach (var item in query.Users)
-                            {
-                                if (item.Username == username)
-                                    throw new NameAlreadyInUseException(nameof(username));
-                            }
-                            try
-                            {
-                                ctx.Users.Add(new UserImpl(username, password, Name));
-                                ctx.SaveChanges();
-                            }
-                            catch (Exception e)
-                            {
-
-                                throw new NameAlreadyInUseException(e.InnerException + " " + nameof(username));
-                            }
+                            if (item.Username == username)
+                                throw new NameAlreadyInUseException(nameof(username));
                         }
-                        else
-                            throw new InvalidOperationException("the site has been deleted");
+                        try
+                        {
+                            ctx.Users.Add(new UserImpl(username, password, Name));
+                            ctx.SaveChanges();
+                        }
+                        catch (Exception e)
+                        {
 
-                        
+                            throw new NameAlreadyInUseException(e.InnerException + " " + nameof(username));
+                        }
+ 
                     }
 
                 }
@@ -148,8 +142,6 @@ namespace AuctionSite
                     }
                     else
                         list.Add(new Auction(auctionField.AuctionId, new User(auctionField.Seller.Username, auctionField.Seller.SiteName) { ConnectionString = ConnectionString, AlarmClock = AlarmClock }, auctionField.Description, auctionField.EndsOn, auctionField.SiteName) { ConnectionString = ConnectionString, AlarmClock = AlarmClock });
-
-                //(auctionField.AuctionId,auctionField.CurrentPrice,auctionField.EndsOn,auctionField.FirstBid,auctionField.Seller);
                 return list;      
                 
             }
@@ -233,13 +225,15 @@ namespace AuctionSite
                     using (var ctx = new AuctionContext(ConnectionString))
                     {
                         IsDeleted();
-                        var query = ctx.Users
-                                    .Where(s => s.Username.Equals(username) && s.Password.Equals(password) && s.SiteName.Equals(Name)).SingleOrDefault();
+                        var user = ctx.Sites
+                                    .Where(s=>s.SiteName.Equals(Name))
+                                    .Select(s => s.Users.FirstOrDefault(userImpl => userImpl.Username.Equals(username) && userImpl.Password.Equals(password)))
+                                    .SingleOrDefault();
                                     
-                        if(null != query)
+                        if(null != user)
                         {
                             
-                            foreach (var sessions in query.Sessions)
+                            foreach (var sessions in user.Sessions)
                             {
  
                                 if (sessions.ValidUntill > AlarmClock.Now )

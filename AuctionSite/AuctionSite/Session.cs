@@ -30,13 +30,13 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(ConnectionString))
             {
-                var query = ctx.Sessions
+                var session = ctx.Sessions
                             .Where(s => s.SessionId.Equals(toRenew.Id))
                             .SingleOrDefault();
                 if (IsValid())
                 {
-                    this.ValidUntil = AlarmClock.Now.AddSeconds(query.Site.SessionExpirationInSeconds);
-                    query.ValidUntill = this.ValidUntil;
+                    this.ValidUntil = AlarmClock.Now.AddSeconds(session.Site.SessionExpirationInSeconds);
+                    session.ValidUntill = this.ValidUntil;
                     ctx.SaveChanges();
                     
                 }

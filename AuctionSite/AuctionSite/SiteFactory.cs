@@ -58,7 +58,7 @@ namespace AuctionSite
                 {
                     if (timezone >= DomainConstraints.MinTimeZone && timezone <= DomainConstraints.MaxTimeZone )
                     {
-                        if (sessionExpirationTimeInSeconds >= 0 && minimumBidIncrement >= 0)
+                        if (sessionExpirationTimeInSeconds > 0 && minimumBidIncrement > 0)
                         {
                           
                             using (var ctx = new AuctionContext(connectionString))

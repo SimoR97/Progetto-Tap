@@ -124,15 +124,10 @@ namespace AuctionSite
 
     public class AuctionContext : DbContext
     {
-        //da capire come poter inizializzare un database a volte con il drop e a volte con il null
+        
         public AuctionContext() : base() { }
 
-        public AuctionContext(string connectionString) : base(connectionString)
-        {
-            // Database.SetInitializer(new DropCreateDatabaseAlways<AuctionContext>());
-            //Database.SetInitializer<AuctionContext>(null);
-
-        }
+        public AuctionContext(string connectionString) : base(connectionString){}
 
         public AuctionContext(string connectionString,bool DropDb) : base(connectionString)
         {
