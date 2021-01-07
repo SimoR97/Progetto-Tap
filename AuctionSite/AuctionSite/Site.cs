@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.Entity;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TAP2018_19.AlarmClock.Interfaces;
 using TAP2018_19.AuctionSite.Interfaces;
-
+using static AuctionSite.BasicControl;
 namespace AuctionSite
 {
     public class Site : ISite
@@ -32,7 +33,7 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(ConnectionString) )
             {
-              var site =  ctx.Sites.Where(s => s.SiteName.Equals(Name)).SingleOrDefault();
+              var site =  ctx.Sites.SingleOrDefault(s => s.SiteName.Equals(Name));
                 if (null == site)
                     throw new InvalidOperationException("the site has been deleted");
             }
@@ -67,39 +68,31 @@ namespace AuctionSite
 
         public void CreateUser(string username, string password)
         {
-            if (!(null == username || null == password))
+            CheckIfMultipleNull(new object[]{username,password});
+            
+            UsernameNotBetweenRangeThrow(username);
+            PasswordLengthIsAboveMinimumAllowedThrow(password);
+            
+            using (var ctx = new AuctionContext(ConnectionString))
             {
-                if (username.Length >= DomainConstraints.MinUserName && username.Length <= DomainConstraints.MaxUserName && password.Length >= DomainConstraints.MinUserPassword)
+                var site = ctx.Sites.SingleOrDefault(s => s.SiteName.Equals(Name));
+                IsDeleted();
+                if (site.Users.Any(item => item.Username == username))
+                    throw new NameAlreadyInUseException(nameof(username));
+                
+                try
                 {
-                    using (var ctx = new AuctionContext(ConnectionString))
-                    {
-                        var query = ctx.Sites.Where(s => s.SiteName.Equals(Name)).Single();
-                        IsDeleted();
-                        foreach (var item in query.Users)
-                        {
-                            if (item.Username == username)
-                                throw new NameAlreadyInUseException(nameof(username));
-                        }
-                        try
-                        {
-                            ctx.Users.Add(new UserImpl(username, password, Name));
-                            ctx.SaveChanges();
-                        }
-                        catch (Exception e)
-                        {
-
-                            throw new NameAlreadyInUseException(e.InnerException + " " + nameof(username));
-                        }
- 
-                    }
-
+                    ctx.Users.Add(new UserImpl(username, password, Name));
+                    ctx.SaveChanges();
                 }
-                else
-                    throw new ArgumentException("Username or Password too long/short");
+                catch (Exception e)
+                {
+
+                    throw new NameAlreadyInUseException(e.InnerException + " " + nameof(username));
+                }
 
             }
-            else
-                throw new ArgumentNullException("Username or Password empty");
+
         }
 
         public void Delete()
@@ -108,8 +101,7 @@ namespace AuctionSite
             {
                 IsDeleted();
                 var siteToDelete = ctx.Sites
-                                .Where(s => s.SiteName.Equals(Name))
-                                .SingleOrDefault();
+                    .SingleOrDefault(s => s.SiteName.Equals(Name));
                 try
                 {
                     ctx.Auctions.RemoveRange(siteToDelete.Auctions);
@@ -131,9 +123,8 @@ namespace AuctionSite
             {
                 IsDeleted();
                 var query = ctx.Sites
-                            .Where(s => s.SiteName.Equals(Name))
-                            .SingleOrDefault();
-                List<IAuction> list = new List<IAuction>();
+                    .SingleOrDefault(s => s.SiteName.Equals(Name));
+                var list = new List<IAuction>();
                 foreach (var auctionField in query.Auctions)
                     if (onlyNotEnded)
                     {
@@ -156,18 +147,17 @@ namespace AuctionSite
                     IsDeleted();
                     var query = ctx.Sites
                                 .Where(s => s.SiteName.Equals(Name))
-                                .Select(s => s.Sessions.Where(a => a.SessionId.Equals(sessionId)).FirstOrDefault())
+                                .Select(s => s.Sessions.FirstOrDefault(a => a.SessionId.Equals(sessionId)))
                                 .SingleOrDefault();
-                    
+                   
                     if (null != query && query.ValidUntill > AlarmClock.Now)
                         return new Session(query.SessionId, query.ValidUntill, new User(query.Username,query.SiteName) { ConnectionString=ConnectionString, AlarmClock =AlarmClock}) { ConnectionString = ConnectionString ,AlarmClock=AlarmClock };
-                    else
-                        return null;
-         
+                    return null;
+
                 }
             }
-            else
-                throw new ArgumentNullException(nameof(sessionId) + "sessionId  must not be null");
+
+            throw new ArgumentNullException(nameof(sessionId) + "sessionId  must not be null");
         }
 
         internal void OnRingingEvent()
@@ -180,19 +170,25 @@ namespace AuctionSite
             using (var ctx = new AuctionContext(ConnectionString))
             {
                 IsDeleted();
-                var query = ctx.Sites
-                            .Where(s => s.SiteName.Equals(Name))
-                            .SingleOrDefault();
+                var site = ctx.Sites
+                    .Where(s => s.SiteName.Equals(Name))
+                    .Include(s => s.Sessions)
+                    .SingleOrDefault();
+                    
+                return GetSessionSafe(site);
 
-                foreach (var sessionField in query.Sessions)
-                {
-                    var result = GetSession(sessionField.SessionId);
-                    if (null !=result)
-                        yield return result ;
-                        
+                IEnumerable<ISession> GetSessionSafe(SiteImpl siteIm) { 
+
+                    foreach (var session in siteIm.Sessions)
+                    {
+                        var result = GetSession(session.SessionId);
+                        if (null !=result)
+                            yield return result ;
+                            
+                    }
                 }
-   
-               
+
+
             }
             
 
@@ -204,72 +200,66 @@ namespace AuctionSite
             using (var ctx = new AuctionContext(ConnectionString))
             {
                 IsDeleted();
-                var query = ctx.Sites
-                            .Where(s => s.SiteName.Equals(Name))
-                             .SingleOrDefault();
-                List<IUser> list = new List<IUser>();
-                foreach (var userField in query.Users)
-                        list.Add(new User(userField.Username,userField.SiteName) { ConnectionString=ConnectionString , AlarmClock=AlarmClock});
+                var site = ctx.Sites
+                    .SingleOrDefault(s => s.SiteName.Equals(Name));
 
-                return list;
+                return site.Users.Select(userField => new User(userField.Username, userField.SiteName) {ConnectionString = ConnectionString, AlarmClock = AlarmClock}).Cast<IUser>().ToList();
 
             }
         }
 
         public ISession Login(string username, string password)
         {
-            if (!(null == username || null == password))
+            CheckIfMultipleNull(new object []{username,password});
+            
+            UsernameNotBetweenRangeThrow(username);
+            PasswordLengthIsAboveMinimumAllowedThrow(password);
+        
+            using (var ctx = new AuctionContext(ConnectionString))
             {
-                if ((username.Length >= DomainConstraints.MinUserName && username.Length <= DomainConstraints.MaxSiteName && password.Length >= DomainConstraints.MinUserPassword))
+                IsDeleted();
+                var user = ctx.Sites
+                            .Where(s=>s.SiteName.Equals(Name))
+                            .Select(s => s.Users.FirstOrDefault(userImpl => userImpl.Username.Equals(username) && userImpl.Password.Equals(password)))
+                            .SingleOrDefault();
+                try
                 {
-                    using (var ctx = new AuctionContext(ConnectionString))
-                    {
-                        IsDeleted();
-                        var user = ctx.Sites
-                                    .Where(s=>s.SiteName.Equals(Name))
-                                    .Select(s => s.Users.FirstOrDefault(userImpl => userImpl.Username.Equals(username) && userImpl.Password.Equals(password)))
-                                    .SingleOrDefault();
-                                    
-                        if(null != user)
-                        {
-                            
-                            foreach (var sessions in user.Sessions)
-                            {
- 
-                                if (sessions.ValidUntill > AlarmClock.Now )
-                                {
-                                    sessions.ValidUntill = AlarmClock.Now.AddSeconds(SessionExpirationInSeconds);
-                                    ctx.SaveChanges();
-                                    return new Session(sessions.SessionId, sessions.ValidUntill, new User(sessions.Username,sessions.SiteName)) { ConnectionString = ConnectionString, AlarmClock = AlarmClock };
-                                }
-                                    
-                                
-                            }
-                            var newSession = new SessionImpl(AlarmClock.Now.AddSeconds(SessionExpirationInSeconds), username, Name);
-                            try
-                            {
-                                ctx.Sessions.Add(newSession);
-                                ctx.SaveChanges();
-                            }
-                            catch (Exception e)
-                            {
-
-                                throw new Exception(e.Message);
-                            }
-
-                          
-                            return new Session(newSession.SessionId, newSession.ValidUntill, new User(username, Name) { ConnectionString=ConnectionString,AlarmClock=AlarmClock}) { ConnectionString=ConnectionString,AlarmClock=AlarmClock};
-                        }
-
-                        return null;
-                        
-                    }
+                    IfNullThrow(user);
                 }
-                else
-                    throw new ArgumentException();
+                catch (ArgumentNullException)
+                {
+                    return null;
+                }
+
+                foreach (var sessions in user.Sessions)
+                {
+
+                    if (sessions.ValidUntill > AlarmClock.Now )
+                    {
+                        sessions.ValidUntill = AlarmClock.Now.AddSeconds(SessionExpirationInSeconds);
+                        ctx.SaveChanges();
+                        return new Session(sessions.SessionId, sessions.ValidUntill, new User(sessions.Username,sessions.SiteName)) { ConnectionString = ConnectionString, AlarmClock = AlarmClock };
+                    }
+                        
+                    
+                }
+                var newSession = new SessionImpl(AlarmClock.Now.AddSeconds(SessionExpirationInSeconds), username, Name);
+                try
+                {
+                    ctx.Sessions.Add(newSession);
+                    ctx.SaveChanges();
+                }
+                catch (Exception e)
+                {
+
+                    throw new Exception(e.Message);
+                }
+                return new Session(newSession.SessionId, newSession.ValidUntill, new User(username, Name) { ConnectionString=ConnectionString,AlarmClock=AlarmClock}) { ConnectionString=ConnectionString,AlarmClock=AlarmClock};
+               
+                
             }
-            else
-                throw new ArgumentNullException();
+                
+            
         }
 
 
