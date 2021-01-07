@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using TAP2018_19.AlarmClock.Interfaces;
 using TAP2018_19.AuctionSite.Interfaces;
-
+using static AuctionSite.BasicControl;//classe addettata ai controlli 
 namespace AuctionSite
 {
     public class SiteFactory : ISiteFactory
@@ -15,6 +15,8 @@ namespace AuctionSite
     {
         //Definisco ogni quanto le sessioni scadute debbano esssere pulite (5 minuti) 
         private const int CleanUpExpiredSessionsTime = 5 * 60 * 1000; 
+
+        
         private static bool CheckConnection(AuctionContext ac)
         {
 
@@ -23,6 +25,7 @@ namespace AuctionSite
 
                 ac.Database.Connection.Open();
                 ac.Database.Connection.Close();
+
             }
             catch (SqlException)
             {
@@ -36,71 +39,48 @@ namespace AuctionSite
 
         
 
-        private static void CheckIfStringIsValid(string connectionString)
-        {
-            if (!(null == connectionString))
-            {
-                if (!connectionString.Contains("Data Source="))
-                    throw new UnavailableDbException(nameof(connectionString) + "Not in the right format");
-            }
-            else
-                throw new ArgumentNullException();
-
-        }
+      
         public void CreateSiteOnDb(string connectionString, string name, int timezone, int sessionExpirationTimeInSeconds, double minimumBidIncrement)
         {
             CheckIfStringIsValid(connectionString);
-            if (!(null == name))
+            IfNullThrow(name);
+            NameSiteNotBetweenRangeThrow(name);
+            TimezoneNotBetweenRangeThrow(timezone);
+                   
+            if (sessionExpirationTimeInSeconds > 0 && minimumBidIncrement > 0)
             {
-                if (name.Length >= DomainConstraints.MinSiteName && name.Length <= DomainConstraints.MaxSiteName)
-
-
+              
+                using (var ctx = new AuctionContext(connectionString))
                 {
-                    if (timezone >= DomainConstraints.MinTimeZone && timezone <= DomainConstraints.MaxTimeZone )
+                    if (CheckConnection(ctx))
                     {
-                        if (sessionExpirationTimeInSeconds > 0 && minimumBidIncrement > 0)
+                        var siteList = ctx.Sites.Where(s => true);
+
+                        foreach (var site in siteList)
                         {
-                          
-                            using (var ctx = new AuctionContext(connectionString))
-                            {
-                                if (CheckConnection(ctx))
-                                {
-                                    var tmp = ctx.Sites.Where(s => true);
-
-                                    foreach (var item in tmp)
-                                    {
-                                        if (name == item.SiteName)
-                                                
-                                            throw new NameAlreadyInUseException(nameof(name));
-                                    }
-                                    try
-                                    {
-                                        ctx.Sites.Add(new SiteImpl(name, timezone, minimumBidIncrement, sessionExpirationTimeInSeconds));
-                                        ctx.SaveChanges();
-                                    }
-                                    catch (Exception e)
-                                    {
-
-                                        throw new NameAlreadyInUseException(e.InnerException+nameof(name)); ;
-                                    }
-                                    
-                                    
-                                }
-                                else
-                                    throw new UnavailableDbException();
-                            }
+                            if (name == site.SiteName)
+                                    throw new NameAlreadyInUseException(nameof(name));
                         }
-                        else
-                            throw new ArgumentOutOfRangeException();
+                        try
+                        {
+                            ctx.Sites.Add(new SiteImpl(name, timezone, minimumBidIncrement, sessionExpirationTimeInSeconds));
+                            ctx.SaveChanges();
+                        }
+                        catch (Exception e)
+                        {
+
+                            throw new NameAlreadyInUseException(e.InnerException+nameof(name)); ;
+                        }
+                        
+                        
                     }
                     else
-                        throw new ArgumentOutOfRangeException();
+                        throw new UnavailableDbException();
                 }
-                else
-                    throw new ArgumentException();
             }
             else
-                throw new ArgumentNullException();
+                throw new ArgumentOutOfRangeException();
+            
         }
 
         public IEnumerable<string> GetSiteNames(string connectionString)
@@ -112,17 +92,16 @@ namespace AuctionSite
                 if (CheckConnection(ctx))
                 {
                     var names = new List<string>();
-                    IQueryable<SiteImpl> site = ctx.Sites.Where(s => true);
-                    foreach (var siteItem in site)
-                    {
-                        names.Add(siteItem.SiteName);
+                    var siteList = ctx.Sites.Where(s => true);
+                    foreach (var site in siteList)
+                        names.Add(site.SiteName);
 
-                    }
+                    
                     return names;
                         
                 }
-                else
-                    throw new UnavailableDbException();
+
+                throw new UnavailableDbException();
             }
 
         }
@@ -130,97 +109,72 @@ namespace AuctionSite
         public int GetTheTimezoneOf(string connectionString, string name)
         {
             CheckIfStringIsValid(connectionString);
-            if (!(null == name))
+            IfNullThrow(name);
+            NameSiteNotBetweenRangeThrow(name);
+                
+            using (var ctx = new AuctionContext(connectionString))
             {
-                if (name.Length >= DomainConstraints.MinSiteName && name.Length <= DomainConstraints.MaxSiteName)
+                if (CheckConnection(ctx))
                 {
-                    using (var ctx = new AuctionContext(connectionString))
-                    {
-                        if (CheckConnection(ctx))
-                        {
-                            var site = ctx.Sites.Where(s => s.SiteName.Equals(name));
-                           
-                            if (site.Any())
-                            {
-                                foreach (var item in site)
-                                {
-                                    return item.TimeZone;
-                                }
-                            }
-
-                            else
-                                throw new InexistentNameException(nameof(name));
-                        }
-                        else
-                            throw new UnavailableDbException();
-
-                    }
+                    var site = ctx.Sites.SingleOrDefault(s => s.SiteName.Equals(name));
+                   
+                    if (null != site)
+                        return site.TimeZone;
+                    throw new InexistentNameException(nameof(name));
                 }
-                else
-                    throw new ArgumentException(nameof(name) + "the name lenght is < or > for the allowed length ");
+
+                throw new UnavailableDbException();
 
             }
-
-            throw new ArgumentNullException(nameof(name));
+            
         }
 
+        
         public ISite LoadSite(string connectionString, string name, IAlarmClock alarmClock)
         {
             CheckIfStringIsValid(connectionString);
-            if (!(null == name||null == alarmClock ))
+            CheckIfMultipleNull(new object[]{name,alarmClock});
+            NameSiteNotBetweenRangeThrow(name);
+            using (var ctx = new AuctionContext(connectionString))
             {
-                if (name.Length >= DomainConstraints.MinSiteName && name.Length <= DomainConstraints.MaxSiteName)
+                if (CheckConnection(ctx))
                 {
-                    using (var ctx = new AuctionContext(connectionString))
+                    
+                    var site = ctx.Sites.SingleOrDefault(s => s.SiteName.Equals(name));
+                    if (null != site)
                     {
-                        if (CheckConnection(ctx))
+
+                        if (site.TimeZone == alarmClock.Timezone)
                         {
                             
-                            var site = ctx.Sites.Where(s => s.SiteName.Equals(name));
-                            if (site.Any())
-                            {
-
-                                var item = site.FirstOrDefault();
-                                if (item.TimeZone == alarmClock.Timezone)
-                                {
-                                    
-                                 Site siteNew = new Site(item.SiteName, item.TimeZone, item.SessionExpirationInSeconds, item.MinimunBidIncrement) { AlarmClock = alarmClock, ConnectionString = connectionString };
-                                    var alarm =alarmClock.InstantiateAlarm(CleanUpExpiredSessionsTime);
-                                    alarm.RingingEvent += siteNew.OnRingingEvent;
-                                    return siteNew;
-                                }
-                                else
-                                    throw new ArgumentException(nameof(alarmClock.Timezone) + "Different from : "+item.TimeZone);
-                            
-                                
-                            }
-                            else
-                                throw new InexistentNameException(nameof(name));
+                            var siteNew = new Site(site.SiteName, site.TimeZone, site.SessionExpirationInSeconds, site.MinimunBidIncrement) { AlarmClock = alarmClock, ConnectionString = connectionString };
+                            var alarm =alarmClock.InstantiateAlarm(CleanUpExpiredSessionsTime);
+                            alarm.RingingEvent += siteNew.OnRingingEvent;
+                            return siteNew;
                         }
-                        else
-                            throw new UnavailableDbException();
+
+                        throw new ArgumentException(nameof(alarmClock.Timezone) + "Different from : "+site.TimeZone);
+
 
                     }
+
+                    throw new InexistentNameException(nameof(name));
                 }
-                else
-                    throw new ArgumentException(nameof(name) + "the name lenght is < or > for the allowed length ");
+
+                throw new UnavailableDbException();
 
             }
-            else
-                throw new ArgumentNullException(nameof(name));
+                
+            
         }
 
-        private void Alarm_RingingEvent()
-        {
-            throw new NotImplementedException();
-        }
-
+       
         public void Setup(string connectionString)
         {
             CheckIfStringIsValid(connectionString);
             //drop previuosly version of the database 
             if(Database.Exists(connectionString))
-            Database.Delete(connectionString);
+                Database.Delete(connectionString);
             //Database.SetInitializer(new DropCreateDatabaseAlways<AuctionContext>());
             try
             {
@@ -239,7 +193,7 @@ namespace AuctionSite
             }
             catch (Exception e)
             {
-                throw new UnavailableDbException(e.Message + " The string is malformed"); ;
+                throw new UnavailableDbException(e.InnerException + " The string is malformed"); ;
             }
 
 

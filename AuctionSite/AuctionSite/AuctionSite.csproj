@@ -65,6 +65,7 @@
     <Compile Include="Auction.cs" />
     <Compile Include="AuctionDbEntities.cs" />
     <Compile Include="AuctionSiteModule.cs" />
+    <Compile Include="BasicControl.cs" />
     <Compile Include="Migrations\202011280920390_AllEntitiesSet.cs" />
     <Compile Include="Migrations\202011280920390_AllEntitiesSet.designer.cs">
       <DependentUpon>202011280920390_AllEntitiesSet.cs</DependentUpon>
