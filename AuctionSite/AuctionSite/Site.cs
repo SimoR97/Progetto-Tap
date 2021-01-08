@@ -81,7 +81,7 @@ namespace AuctionSite
         {
             CheckIfMultipleNull(new object[]{username,password});
             
-            UsernameNotBetweenRangeThrow(username);
+            UsernameLengthNotBetweenRangeThrow(username);
             PasswordLengthIsAboveMinimumAllowedThrow(password);
             
             using (var ctx = new AuctionContext(ConnectionString))
@@ -221,7 +221,7 @@ namespace AuctionSite
         {
             CheckIfMultipleNull(new object []{username,password});
             
-            UsernameNotBetweenRangeThrow(username);
+            UsernameLengthNotBetweenRangeThrow(username);
             PasswordLengthIsAboveMinimumAllowedThrow(password);
         
             using (var ctx = new AuctionContext(ConnectionString))

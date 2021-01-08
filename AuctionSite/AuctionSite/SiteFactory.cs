@@ -44,7 +44,7 @@ namespace AuctionSite
         {
             CheckIfStringIsValid(connectionString);
             IfNullThrow(name);
-            NameSiteNotBetweenRangeThrow(name);
+            SiteNameLengthNotBetweenRangeThrow(name);
             TimezoneNotBetweenRangeThrow(timezone);
                    
             if (sessionExpirationTimeInSeconds > 0 && minimumBidIncrement > 0)
@@ -110,7 +110,7 @@ namespace AuctionSite
         {
             CheckIfStringIsValid(connectionString);
             IfNullThrow(name);
-            NameSiteNotBetweenRangeThrow(name);
+            SiteNameLengthNotBetweenRangeThrow(name);
                 
             using (var ctx = new AuctionContext(connectionString))
             {
@@ -134,7 +134,7 @@ namespace AuctionSite
         {
             CheckIfStringIsValid(connectionString);
             CheckIfMultipleNull(new object[]{name,alarmClock});
-            NameSiteNotBetweenRangeThrow(name);
+            SiteNameLengthNotBetweenRangeThrow(name);
             using (var ctx = new AuctionContext(connectionString))
             {
                 if (CheckConnection(ctx))

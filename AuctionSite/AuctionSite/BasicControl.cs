@@ -12,7 +12,7 @@ namespace AuctionSite
 
         public static void IfNullThrow(object checkIfNull) => _ = checkIfNull ?? throw new ArgumentNullException(nameof(checkIfNull));
 
-        public static void NameSiteNotBetweenRangeThrow(string sitName)
+        public static void SiteNameLengthNotBetweenRangeThrow(string sitName)
         { 
             if( sitName.Length < DomainConstraints.MinSiteName || sitName.Length > DomainConstraints.MaxSiteName)
                   throw new ArgumentException(nameof(sitName) + $" The name length is < {DomainConstraints.MinSiteName} or > {DomainConstraints.MaxSiteName} for the allowed length ");
@@ -23,7 +23,7 @@ namespace AuctionSite
             if (timezone < DomainConstraints.MinTimeZone || timezone > DomainConstraints.MaxTimeZone)
                     throw new ArgumentOutOfRangeException(nameof(timezone) + $" The timezone  is < {DomainConstraints.MinTimeZone} or > {DomainConstraints.MaxTimeZone}  ");
         }
-        public static void UsernameNotBetweenRangeThrow(string username)
+        public static void UsernameLengthNotBetweenRangeThrow(string username)
         {
             if (username.Length < DomainConstraints.MinUserName || username.Length > DomainConstraints.MaxUserName )
                 throw new ArgumentException(nameof(username) + $" The username  is < {DomainConstraints.MinUserName} or > {DomainConstraints.MaxSiteName}  ");
@@ -34,6 +34,20 @@ namespace AuctionSite
             if (password.Length < DomainConstraints.MinUserPassword)
                 throw new ArgumentException( $" The password  is < {DomainConstraints.MinUserPassword}   ");
         }
+
+        public static void DescriptionEmptyThrow(string description)
+        {
+            if (description.Length <= 0)
+                throw new ArgumentException(nameof(description) +$" The description is empty");
+        }
+
+        public static void StartingPriceLessThanZeroThrow(double startingPrice)
+        {
+            if (startingPrice < 0)
+                throw new ArgumentOutOfRangeException(nameof(startingPrice) + "must be positive");
+
+        }
+
 
         public static void CheckIfMultipleNull(IEnumerable<object> checkIfNullList)
       {
