@@ -31,23 +31,34 @@ namespace AuctionSite
 
         private void IsDeleted()
         {
-            using (var ctx = new AuctionContext(ConnectionString) )
+            using (var ctx = new AuctionContext(ConnectionString))
             {
-              var site =  ctx.Sites.SingleOrDefault(s => s.SiteName.Equals(Name));
+                var site = ctx.Sites
+                    .SingleOrDefault(s => s.SiteName.Equals(Name));
+                    
                 if (null == site)
+                {
+
                     throw new InvalidOperationException("the site has been deleted");
+
+                }
             }
-                   
-          
+            
+
+
+
+
         }
         public void CleanupSessions()
         {
             using (var ctx = new AuctionContext(ConnectionString))
             {
-                IsDeleted();
+               // IsDeleted();
                 var sessionsToClean = ctx.Sites
                                         .Where(s => s.SiteName.Equals(Name))
-                                        .Select(s => s.Sessions.Where(a => a.ValidUntill <= AlarmClock.Now)).SingleOrDefault();
+                                        .Select(s => s.Sessions.Where(a => a.ValidUntill <= AlarmClock.Now))
+                                        .SingleOrDefault()
+                                      ?? throw new InvalidOperationException("the site has been deleted"); ;
 
                 try
                 {
@@ -75,8 +86,9 @@ namespace AuctionSite
             
             using (var ctx = new AuctionContext(ConnectionString))
             {
-                var site = ctx.Sites.SingleOrDefault(s => s.SiteName.Equals(Name));
-                IsDeleted();
+                var site = ctx.Sites.SingleOrDefault(s => s.SiteName.Equals(Name)) 
+                           ?? throw new InvalidOperationException("the site has been deleted");
+               
                 if (site.Users.Any(item => item.Username == username))
                     throw new NameAlreadyInUseException(nameof(username));
                 
@@ -99,9 +111,10 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(ConnectionString))
             {
-                IsDeleted();
+               // IsDeleted();
                 var siteToDelete = ctx.Sites
-                    .SingleOrDefault(s => s.SiteName.Equals(Name));
+                    .SingleOrDefault(s => s.SiteName.Equals(Name)) 
+                     ?? throw new InvalidOperationException("the site has been deleted");
                 try
                 {
                     ctx.Auctions.RemoveRange(siteToDelete.Auctions);
@@ -121,11 +134,12 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(ConnectionString))
             {
-                IsDeleted();
-                var query = ctx.Sites
-                    .SingleOrDefault(s => s.SiteName.Equals(Name));
+                //IsDeleted();
+                var site = ctx.Sites
+                    .SingleOrDefault(s => s.SiteName.Equals(Name))
+                            ?? throw new InvalidOperationException("the site has been deleted");
                 var list = new List<IAuction>();
-                foreach (var auctionField in query.Auctions)
+                foreach (var auctionField in site.Auctions)
                     if (onlyNotEnded)
                     {
                         if (auctionField.EndsOn > AlarmClock.Now)
@@ -140,46 +154,40 @@ namespace AuctionSite
 
         public ISession GetSession(string sessionId)
         {
-            if (null != sessionId)
+            IfNullThrow(sessionId);
+            using (var ctx = new AuctionContext(ConnectionString))
             {
-                using (var ctx = new AuctionContext(ConnectionString))
-                {
-                    IsDeleted();
-                    var query = ctx.Sites
-                                .Where(s => s.SiteName.Equals(Name))
-                                .Select(s => s.Sessions.FirstOrDefault(a => a.SessionId.Equals(sessionId)))
-                                .SingleOrDefault();
-                   
-                    if (null != query && query.ValidUntill > AlarmClock.Now)
-                        return new Session(query.SessionId, query.ValidUntill, new User(query.Username,query.SiteName) { ConnectionString=ConnectionString, AlarmClock =AlarmClock}) { ConnectionString = ConnectionString ,AlarmClock=AlarmClock };
-                    return null;
+                //IsDeleted();
+                var site = ctx.Sites
+                    //.Select(s => s.Sessions.FirstOrDefault(a => a.SessionId.Equals(sessionId)))
+                    .SingleOrDefault(s => s.SiteName.Equals(Name))
+                            ?? throw new InvalidOperationException("the site has been deleted");
+                var session = site.Sessions.SingleOrDefault(s => s.SessionId.Equals(sessionId));
+                if (null != session && session.ValidUntill > AlarmClock.Now)
+                    return new Session(session.SessionId, session.ValidUntill, new User(session.Username,site.SiteName) { ConnectionString=ConnectionString, AlarmClock =AlarmClock}) { ConnectionString = ConnectionString ,AlarmClock=AlarmClock };
+                return null;
 
-                }
             }
-
-            throw new ArgumentNullException(nameof(sessionId) + "sessionId  must not be null");
         }
-
-        internal void OnRingingEvent()
-        {
-            this.CleanupSessions();
-        }
-
+        //quando il tempo settato scade vengo pulite le sessioni
+        internal void OnRingingEvent() => CleanupSessions();
+        
         public IEnumerable<ISession> GetSessions()
         {
             using (var ctx = new AuctionContext(ConnectionString))
             {
-                IsDeleted();
+                //IsDeleted();
                 var site = ctx.Sites
-                    .Where(s => s.SiteName.Equals(Name))
-                    .Include(s => s.Sessions)
-                    .SingleOrDefault();
+                               .Where(s => s.SiteName.Equals(Name))
+                               .Include(s => s.Sessions)
+                               .SingleOrDefault()
+                           ?? throw new InvalidOperationException("the site has been deleted"); ;
                     
-                return GetSessionSafe(site);
+                return GetSessionSafe();
 
-                IEnumerable<ISession> GetSessionSafe(SiteImpl siteIm) { 
+                IEnumerable<ISession> GetSessionSafe() { 
 
-                    foreach (var session in siteIm.Sessions)
+                    foreach (var session in site.Sessions)
                     {
                         var result = GetSession(session.SessionId);
                         if (null !=result)
@@ -199,9 +207,10 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(ConnectionString))
             {
-                IsDeleted();
+                //IsDeleted();
                 var site = ctx.Sites
-                    .SingleOrDefault(s => s.SiteName.Equals(Name));
+                               .SingleOrDefault(s => s.SiteName.Equals(Name))
+                           ?? throw new InvalidOperationException("the site has been deleted"); ;
 
                 return site.Users.Select(userField => new User(userField.Username, userField.SiteName) {ConnectionString = ConnectionString, AlarmClock = AlarmClock}).Cast<IUser>().ToList();
 
@@ -217,11 +226,13 @@ namespace AuctionSite
         
             using (var ctx = new AuctionContext(ConnectionString))
             {
-                IsDeleted();
-                var user = ctx.Sites
-                            .Where(s=>s.SiteName.Equals(Name))
-                            .Select(s => s.Users.FirstOrDefault(userImpl => userImpl.Username.Equals(username) && userImpl.Password.Equals(password)))
-                            .SingleOrDefault();
+                // IsDeleted();
+                var site = ctx.Sites
+                               //.Select(s => s.Users.FirstOrDefault(userImpl => userImpl.Username.Equals(username) && userImpl.Password.Equals(password)))
+                               .SingleOrDefault(s => s.SiteName.Equals(Name))
+                           ?? throw new InvalidOperationException("the site has been deleted"); ;
+                var user = site.Users.SingleOrDefault(userImpl =>
+                    userImpl.Username.Equals(username) && userImpl.Password.Equals(password));
                 try
                 {
                     IfNullThrow(user);

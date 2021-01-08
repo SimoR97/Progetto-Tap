@@ -17,7 +17,7 @@ namespace AuctionSite
         private const int CleanUpExpiredSessionsTime = 5 * 60 * 1000; 
 
         
-        private static bool CheckConnection(AuctionContext ac)
+        private static bool CheckConnection(DbContext ac)
         {
 
             try
@@ -172,13 +172,12 @@ namespace AuctionSite
         public void Setup(string connectionString)
         {
             CheckIfStringIsValid(connectionString);
-            //drop previuosly version of the database 
+            //drop previously version of the database 
             if(Database.Exists(connectionString))
                 Database.Delete(connectionString);
-            //Database.SetInitializer(new DropCreateDatabaseAlways<AuctionContext>());
             try
             {
-                using (var ctx = new AuctionContext(connectionString,true))
+                using (var ctx = new AuctionContext(connectionString))
                 {
                     ctx.Database.Create();
                     if (!CheckConnection(ctx)) throw new UnavailableDbException("The Db is not responding");
