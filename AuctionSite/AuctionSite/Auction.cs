@@ -2,6 +2,7 @@
 using System.Linq;
 using TAP2018_19.AlarmClock.Interfaces;
 using TAP2018_19.AuctionSite.Interfaces;
+using static AuctionSite.BasicControl;
 
 namespace AuctionSite
 {
@@ -30,86 +31,79 @@ namespace AuctionSite
             SiteName = siteName;
         
         }
-        public bool IsDeleted()
-        {
-            using (var ctx = new AuctionContext(ConnectionString))
-            {
-                var auction = ctx.Auctions.SingleOrDefault(s => s.AuctionId.Equals(Id));
-                return null == auction;
-            }
-        }
+        
         public bool BidOnAuction(ISession session, double offer)
         {
-            if (EndsOn > AlarmClock.Now && !IsDeleted())
+            if (EndsOn > AlarmClock.Now) 
             {
                 if (offer > 0)
                 {
-                    if (null != session)
+                    IfNullThrow(session);
+                    
+                    using (var ctx = new AuctionContext(ConnectionString))
                     {
-                        using (var ctx = new AuctionContext(ConnectionString))
-                        {
-                            var siteNameLoggedU = ctx.Sessions
-                                            .Where(s => s.SessionId.Equals(session.Id))
-                                            .Select(s => s.User.SiteName)
+                        var siteNameLoggedU = ctx.Sessions
+                                        .Where(s => s.SessionId.Equals(session.Id))
+                                        .Select(s => s.User.SiteName)
+                                        .SingleOrDefault();
+                        var siteNameSellerU = ctx.Users
+                                            .Where(s => s.Username.Equals(Seller.Username))
+                                            .Select(s => s.SiteName)
                                             .SingleOrDefault();
-                            var siteNameSellerU = ctx.Users
-                                                .Where(s => s.Username.Equals(Seller.Username))
-                                                .Select(s => s.SiteName)
-                                                .SingleOrDefault();
 
-                            if (session.IsValid() && !Equals(Seller, session.User) &&
-                                siteNameLoggedU == siteNameSellerU)
+                        if (session.IsValid() && !Equals(Seller, session.User) &&
+                            siteNameLoggedU == siteNameSellerU)
+                        {
+                            var auction = ctx.Auctions
+                                .SingleOrDefault(s => s.AuctionId.Equals(Id))
+                                ?? throw new InvalidOperationException(nameof(Id)+"doesn't exist any more");
+
+                            var sessionObj = session as Session;
+
+                            sessionObj?.RenewedSession(session);
+
+                            if (Equals(session.User, CurrentWinner()) &&
+                                offer < auction.HighestBid + auction.Site.MinimunBidIncrement ||
+                                !Equals(session.User, CurrentWinner()) && offer < CurrentPrice() ||
+                                !Equals(session.User, CurrentWinner()) &&
+                                offer < CurrentPrice() + auction.Site.MinimunBidIncrement &&
+                                auction.FirstBid == false) return false;
+
+                            if (auction.FirstBid)
                             {
-                                var auction = ctx.Auctions
-                                    .SingleOrDefault(s => s.AuctionId.Equals(Id));
-
-                                var sessionObj = session as Session;
-
-                                sessionObj?.RenewedSession(session);
-
-                                if (Equals(session.User, CurrentWinner()) &&
-                                    offer < auction.HighestBid + auction.Site.MinimunBidIncrement ||
-                                    !Equals(session.User, CurrentWinner()) && offer < CurrentPrice() ||
-                                    !Equals(session.User, CurrentWinner()) &&
-                                    offer < CurrentPrice() + auction.Site.MinimunBidIncrement &&
-                                    auction.FirstBid == false) return false;
-
-                                if (auction.FirstBid)
-                                {
-                                    auction.HighestBid = offer;
-                                    auction.CurrentWinner = session.User.Username;
-                                    auction.FirstBid = false;
-                                }
-                                else if (CurrentWinner().Equals(session.User))
-                                {
-                                    auction.HighestBid = offer;
-                                }
-                                else
-                                    switch (auction.FirstBid)
-                                    {
-                                        case false when !Equals(CurrentWinner(), session.User) &&
-                                                        offer > auction.HighestBid:
-                                            auction.CurrentPrice = Math.Min(offer,
-                                                auction.HighestBid + auction.Site.MinimunBidIncrement);
-                                            auction.HighestBid = offer;
-                                            auction.CurrentWinner = session.User.Username;
-                                            break;
-                                        case false when !Equals(CurrentWinner(), session.User) &&
-                                                        offer <= auction.HighestBid:
-                                            auction.CurrentPrice = Math.Min(offer + auction.Site.MinimunBidIncrement,
-                                                auction.HighestBid);
-                                            break;
-                                    }
-
-                                ctx.SaveChanges();
-
-                                return true;
+                                auction.HighestBid = offer;
+                                auction.CurrentWinner = session.User.Username;
+                                auction.FirstBid = false;
                             }
+                            else if (CurrentWinner().Equals(session.User))
+                            {
+                                auction.HighestBid = offer;
+                            }
+                            else
+                                switch (auction.FirstBid)
+                                {
+                                    case false when !Equals(CurrentWinner(), session.User) &&
+                                                    offer > auction.HighestBid:
+                                        auction.CurrentPrice = Math.Min(offer,
+                                            auction.HighestBid + auction.Site.MinimunBidIncrement);
+                                        auction.HighestBid = offer;
+                                        auction.CurrentWinner = session.User.Username;
+                                        break;
+                                    case false when !Equals(CurrentWinner(), session.User) &&
+                                                    offer <= auction.HighestBid:
+                                        auction.CurrentPrice = Math.Min(offer + auction.Site.MinimunBidIncrement,
+                                            auction.HighestBid);
+                                        break;
+                                }
 
-                            throw new ArgumentException();
+                            ctx.SaveChanges();
+
+                            return true;
                         }
+
+                        throw new ArgumentException();
                     }
-                    throw new ArgumentNullException();
+                    
                 }
                 throw new ArgumentOutOfRangeException();
             }
@@ -118,27 +112,26 @@ namespace AuctionSite
 
         public double CurrentPrice()
         {
-            if (IsDeleted()) throw new InvalidOperationException();
-            using (var ctx = new AuctionContext(ConnectionString))
-            {
-                var auction = ctx.Auctions
-                    .SingleOrDefault(s => s.AuctionId.Equals(Id) && s.SiteName.Equals(SiteName));
-                return auction.CurrentPrice;
-            }
+             using (var ctx = new AuctionContext(ConnectionString))
+             {
+                 var auction = ctx.Auctions
+                                   .SingleOrDefault(s => s.AuctionId.Equals(Id) && s.SiteName.Equals(SiteName))
+                               ?? throw new InvalidOperationException(nameof(Id)+"doesn't exist any more"); 
+                 return auction.CurrentPrice;
+             }
         }
 
         public IUser CurrentWinner()
         {
             using (var ctx = new AuctionContext(ConnectionString))
             {
-                if (IsDeleted()) throw new InvalidOperationException();
-                var auction = ctx.Auctions
-                    .SingleOrDefault(s => s.AuctionId.Equals(Id) && s.SiteName.Equals(SiteName));
+                 var auction = ctx.Auctions
+                    .SingleOrDefault(s => s.AuctionId.Equals(Id) && s.SiteName.Equals(SiteName))
+                              ?? throw new InvalidOperationException(nameof(Id) + "doesn't exist any more");
                 if (!auction.FirstBid && auction.CurrentWinner != null)
                     return new User(auction.CurrentWinner,auction.SiteName) { ConnectionString = ConnectionString,AlarmClock=AlarmClock };
-                else
-                    return null;
-                            
+                return null;
+
             }
 
         }
@@ -147,9 +140,10 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(ConnectionString))
             {
-                if (IsDeleted()) throw new InvalidOperationException();
                 var auction = ctx.Auctions
-                    .SingleOrDefault(s => s.AuctionId.Equals(Id) && s.SiteName.Equals(SiteName));
+                    .SingleOrDefault(s => s.AuctionId.Equals(Id) && s.SiteName.Equals(SiteName))
+                              ?? throw new InvalidOperationException(nameof(Id) + "doesn't exist any more");
+
 
                 ctx.Auctions.Remove(auction);
                 ctx.SaveChanges();
@@ -165,7 +159,7 @@ namespace AuctionSite
 
         public override int GetHashCode()
         {
-            return this.ToString().GetHashCode();
+            return ToString().GetHashCode();
         }
 
         public static bool operator ==(Auction u1, Auction u2)
