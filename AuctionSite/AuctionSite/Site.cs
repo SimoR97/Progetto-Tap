@@ -21,44 +21,24 @@ namespace AuctionSite
         public IAlarmClock AlarmClock { get; set; }
         public string ConnectionString { get; set; }
 
-        public Site(string name,int timeZone,int sessionExpirationInSeconds,double minimunBidIncrement)
+        public Site(string name,int timeZone,int sessionExpirationInSeconds,double minimumBidIncrement)
         {
             Name = name;
             Timezone = timeZone;
             SessionExpirationInSeconds = sessionExpirationInSeconds;
-            MinimumBidIncrement = minimunBidIncrement;
+            MinimumBidIncrement = minimumBidIncrement;
         }
 
-        private void IsDeleted()
-        {
-            using (var ctx = new AuctionContext(ConnectionString))
-            {
-                var site = ctx.Sites
-                    .SingleOrDefault(s => s.SiteName.Equals(Name));
-                    
-                if (null == site)
-                {
-
-                    throw new InvalidOperationException("the site has been deleted");
-
-                }
-            }
-            
-
-
-
-
-        }
+        
         public void CleanupSessions()
         {
             using (var ctx = new AuctionContext(ConnectionString))
             {
-               // IsDeleted();
-                var sessionsToClean = ctx.Sites
-                                        .Where(s => s.SiteName.Equals(Name))
-                                        .Select(s => s.Sessions.Where(a => a.ValidUntill <= AlarmClock.Now))
-                                        .SingleOrDefault()
-                                      ?? throw new InvalidOperationException("the site has been deleted"); ;
+                var sessionsToClean =
+                    ctx.Sites.Where(s => s.SiteName.Equals(Name))
+                        .Select(s => s.Sessions.Where(a => a.ValidUntil <= AlarmClock.Now))
+                        .SingleOrDefault() ?? throw new InvalidOperationException("the site has been deleted");
+                
 
                 try
                 {
@@ -86,8 +66,8 @@ namespace AuctionSite
             
             using (var ctx = new AuctionContext(ConnectionString))
             {
-                var site = ctx.Sites.SingleOrDefault(s => s.SiteName.Equals(Name)) 
-                           ?? throw new InvalidOperationException("the site has been deleted");
+                var site = ctx.Sites.SingleOrDefault(s => s.SiteName.Equals(Name)) ??
+                           throw new InvalidOperationException("the site has been deleted");
                
                 if (site.Users.Any(item => item.Username == username))
                     throw new NameAlreadyInUseException(nameof(username));
@@ -111,10 +91,9 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(ConnectionString))
             {
-               // IsDeleted();
                 var siteToDelete = ctx.Sites
-                    .SingleOrDefault(s => s.SiteName.Equals(Name)) 
-                     ?? throw new InvalidOperationException("the site has been deleted");
+                                       .SingleOrDefault(s => s.SiteName.Equals(Name))
+                                   ?? throw new InvalidOperationException("the site has been deleted");
                 try
                 {
                     ctx.Auctions.RemoveRange(siteToDelete.Auctions);
@@ -134,7 +113,7 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(ConnectionString))
             {
-                //IsDeleted();
+               
                 var site = ctx.Sites
                     .SingleOrDefault(s => s.SiteName.Equals(Name))
                             ?? throw new InvalidOperationException("the site has been deleted");
@@ -157,14 +136,11 @@ namespace AuctionSite
             IfNullThrow(sessionId);
             using (var ctx = new AuctionContext(ConnectionString))
             {
-                //IsDeleted();
-                var site = ctx.Sites
-                    //.Select(s => s.Sessions.FirstOrDefault(a => a.SessionId.Equals(sessionId)))
-                    .SingleOrDefault(s => s.SiteName.Equals(Name))
-                            ?? throw new InvalidOperationException("the site has been deleted");
+                var site = ctx.Sites.SingleOrDefault(s => s.SiteName.Equals(Name)) ??
+                           throw new InvalidOperationException("the site has been deleted");
                 var session = site.Sessions.SingleOrDefault(s => s.SessionId.Equals(sessionId));
-                if (null != session && session.ValidUntill > AlarmClock.Now)
-                    return new Session(session.SessionId, session.ValidUntill, new User(session.Username,site.SiteName) { ConnectionString=ConnectionString, AlarmClock =AlarmClock}) { ConnectionString = ConnectionString ,AlarmClock=AlarmClock };
+                if (null != session && session.ValidUntil > AlarmClock.Now)
+                    return new Session(session.SessionId, session.ValidUntil, new User(session.Username,site.SiteName) { ConnectionString=ConnectionString, AlarmClock =AlarmClock}) { ConnectionString = ConnectionString ,AlarmClock=AlarmClock };
                 return null;
 
             }
@@ -176,12 +152,9 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(ConnectionString))
             {
-                //IsDeleted();
-                var site = ctx.Sites
-                               .Where(s => s.SiteName.Equals(Name))
-                               .Include(s => s.Sessions)
-                               .SingleOrDefault()
-                           ?? throw new InvalidOperationException("the site has been deleted"); ;
+                var site = ctx.Sites.Where(s => s.SiteName.Equals(Name)).Include(s => s.Sessions).SingleOrDefault() ??
+                           throw new InvalidOperationException("the site has been deleted");
+                
                     
                 return GetSessionSafe();
 
@@ -207,11 +180,8 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(ConnectionString))
             {
-                //IsDeleted();
-                var site = ctx.Sites
-                               .SingleOrDefault(s => s.SiteName.Equals(Name))
-                           ?? throw new InvalidOperationException("the site has been deleted"); ;
-
+                var site = ctx.Sites.SingleOrDefault(s => s.SiteName.Equals(Name)) ??
+                           throw new InvalidOperationException("the site has been deleted");
                 return site.Users.Select(userField => new User(userField.Username, userField.SiteName) {ConnectionString = ConnectionString, AlarmClock = AlarmClock}).Cast<IUser>().ToList();
 
             }
@@ -226,11 +196,9 @@ namespace AuctionSite
         
             using (var ctx = new AuctionContext(ConnectionString))
             {
-                // IsDeleted();
-                var site = ctx.Sites
-                               //.Select(s => s.Users.FirstOrDefault(userImpl => userImpl.Username.Equals(username) && userImpl.Password.Equals(password)))
-                               .SingleOrDefault(s => s.SiteName.Equals(Name))
-                           ?? throw new InvalidOperationException("the site has been deleted"); ;
+                var site = ctx.Sites.SingleOrDefault(s => s.SiteName.Equals(Name)) ??
+                           throw new InvalidOperationException("the site has been deleted");
+
                 var user = site.Users.SingleOrDefault(userImpl =>
                     userImpl.Username.Equals(username) && userImpl.Password.Equals(password));
                 try
@@ -245,11 +213,11 @@ namespace AuctionSite
                 foreach (var sessions in user.Sessions)
                 {
 
-                    if (sessions.ValidUntill > AlarmClock.Now )
+                    if (sessions.ValidUntil > AlarmClock.Now )
                     {
-                        sessions.ValidUntill = AlarmClock.Now.AddSeconds(SessionExpirationInSeconds);
+                        sessions.ValidUntil = AlarmClock.Now.AddSeconds(SessionExpirationInSeconds);
                         ctx.SaveChanges();
-                        return new Session(sessions.SessionId, sessions.ValidUntill, new User(sessions.Username,sessions.SiteName)) { ConnectionString = ConnectionString, AlarmClock = AlarmClock };
+                        return new Session(sessions.SessionId, sessions.ValidUntil, new User(sessions.Username,sessions.SiteName)) { ConnectionString = ConnectionString, AlarmClock = AlarmClock };
                     }
                         
                     
@@ -265,7 +233,7 @@ namespace AuctionSite
 
                     throw new Exception(e.Message);
                 }
-                return new Session(newSession.SessionId, newSession.ValidUntill, new User(username, Name) { ConnectionString=ConnectionString,AlarmClock=AlarmClock}) { ConnectionString=ConnectionString,AlarmClock=AlarmClock};
+                return new Session(newSession.SessionId, newSession.ValidUntil, new User(username, Name) { ConnectionString=ConnectionString,AlarmClock=AlarmClock}) { ConnectionString=ConnectionString,AlarmClock=AlarmClock};
                
                 
             }

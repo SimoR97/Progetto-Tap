@@ -14,9 +14,9 @@ namespace AuctionSite
     public class UserImpl
     {
         [Key]
-        [MinLength(DomainConstraints.MinUserName, ErrorMessage = "Minum characters are 3"), MaxLength(DomainConstraints.MaxUserName, ErrorMessage = "Minum characters are 64")]
+        [MinLength(DomainConstraints.MinUserName, ErrorMessage = "Minimum characters are 3"), MaxLength(DomainConstraints.MaxUserName, ErrorMessage = "Minimum characters are 64")]
         public string Username { get; set; }
-        [MinLength(DomainConstraints.MinUserPassword, ErrorMessage = "Minum characters are 4")]
+        [MinLength(DomainConstraints.MinUserPassword, ErrorMessage = "Minimum characters are 4")]
         [Required]
         public string Password { get; set; }
         [ForeignKey("Site")]
@@ -53,12 +53,12 @@ namespace AuctionSite
         [ForeignKey("Seller")]
         public string Username { get; set; }
         public virtual UserImpl Seller { get; set; }
-        private int idValue = 0 ;
+        private readonly int _idValue = 0 ;
         public AuctionImpl() { }
         public AuctionImpl(string description, DateTime endsOn, double startingPrice, string siteName, string seller)
         {
-            idValue += 1;
-            AuctionId = idValue;
+            _idValue += 1;
+            AuctionId = _idValue;
             Description = description;
             EndsOn = endsOn;
             CurrentPrice = startingPrice;
@@ -78,7 +78,7 @@ namespace AuctionSite
         [Key]
         public string SessionId { get; set; }
         [Required]
-        public DateTime ValidUntill { get; set; }
+        public DateTime ValidUntil { get; set; }
         [ForeignKey("Site")]
         public string SiteName { get; set; }
         public virtual SiteImpl Site { get; set; }
@@ -87,11 +87,11 @@ namespace AuctionSite
         public virtual UserImpl User { get; set; }
         public virtual ICollection<AuctionImpl> Auctions { get; set; }
         public SessionImpl() { }
-        public SessionImpl(DateTime validUntill, string username, string siteName)
+        public SessionImpl(DateTime validUntil, string username, string siteName)
         {
             var random = new Random();
-            SessionId = random.Next(10000).ToString() + username;
-            ValidUntill = validUntill;
+            SessionId = random.Next(10000) + username;
+            ValidUntil = validUntil;
             Username = username;
             SiteName = siteName;
         }
@@ -100,12 +100,12 @@ namespace AuctionSite
     public class SiteImpl
     {
         [Key]
-        [MinLength(DomainConstraints.MinSiteName, ErrorMessage = "Min characters allowed is 1"), MaxLength(DomainConstraints.MaxSiteName, ErrorMessage = "Max charachters allowed are 128")]
+        [MinLength(DomainConstraints.MinSiteName, ErrorMessage = "Min characters allowed is 1"), MaxLength(DomainConstraints.MaxSiteName, ErrorMessage = "Max characters allowed are 128")]
         public string SiteName { get; set; }
         [Required]
-        [Range(DomainConstraints.MinTimeZone, DomainConstraints.MaxTimeZone, ErrorMessage = "Inset a value between -12 and 12")]
+        [Range(DomainConstraints.MinTimeZone, DomainConstraints.MaxTimeZone, ErrorMessage = "Insert a value between -12 and 12")]
         public int TimeZone { get; set; }
-        public double MinimunBidIncrement { get; set; }
+        public double MinimumBidIncrement { get; set; }
         public int SessionExpirationInSeconds { get; set; }
 
         public virtual ICollection<UserImpl> Users { get; set; }
@@ -116,7 +116,7 @@ namespace AuctionSite
         {
             SiteName = name;
             TimeZone = timeZone;
-            MinimunBidIncrement = minimumBidIncrement;
+            MinimumBidIncrement = minimumBidIncrement;
             SessionExpirationInSeconds = sessionExpirationInSeconds;
         }
 
@@ -124,6 +124,7 @@ namespace AuctionSite
 
     public class AuctionContext : DbContext
     {
+        public AuctionContext() : base() { }
         public AuctionContext(string connectionString) : base(connectionString){}
         public DbSet<SiteImpl> Sites { get; set; }
         public DbSet<UserImpl> Users { get; set; }

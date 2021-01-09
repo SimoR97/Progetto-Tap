@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.Entity;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -20,23 +21,15 @@ namespace AuctionSite
             Username = username;
             SiteName = siteName;
         }
-        public bool IsDeleted()
-        {
-            using (var ctx = new AuctionContext(ConnectionString))
-            {
-                var auction = ctx.Users.Where(s => s.Username.Equals(Username)).SingleOrDefault();
-                if (null == auction) return true;
-                return false;
-            }
-        }
+        
         public void Delete()
         {
             using (var ctx = new AuctionContext(ConnectionString))
             {
-                if (IsDeleted()) throw new InvalidOperationException();
-                var userToDelete = ctx.Users
-                            .Where(s => s.Username.Equals(Username) && s.SiteName.Equals(SiteName))
-                            .SingleOrDefault();
+               
+                var userToDelete =
+                    ctx.Users.SingleOrDefault(s => s.Username.Equals(Username) && s.SiteName.Equals(SiteName)) ??
+                    throw new InvalidOperationException(nameof(Username) + "doesn't exist anymore"); 
 
                 ctx.Users.Remove(userToDelete);
                 ctx.SaveChanges();
@@ -48,19 +41,29 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(ConnectionString))
             {
-                if (IsDeleted()) throw new InvalidOperationException();
+               
+                _ = ctx.Users.SingleOrDefault(s => s.Username.Equals(Username) && s.SiteName.Equals(SiteName)) ??
+                    throw new InvalidOperationException(nameof(Username) + "doesn't exist anymore");
+                
                 var auctionEnded = ctx.Auctions
-                                .Where(s => s.EndsOn <= AlarmClock.Now )
-                                .ToList();
-                
-                foreach (var wonAuction in auctionEnded)
+                    .Where(s => s.EndsOn <= AlarmClock.Now && s.SiteName.Equals(SiteName))
+                    .Include(s=>s.Seller)
+                    .ToList();
+
+                return WonAuctionsSafe();
+
+                IEnumerable<IAuction> WonAuctionsSafe()
                 {
-                    if (wonAuction.CurrentWinner == Username)
-                            yield return  new Auction(wonAuction.AuctionId,new User(wonAuction.Seller.Username, wonAuction.Seller.SiteName) { ConnectionString=ConnectionString,AlarmClock=AlarmClock},wonAuction.Description,wonAuction.EndsOn,wonAuction.SiteName);
-                    
+                    foreach (var wonAuction in auctionEnded.Where(wonAuction => wonAuction.CurrentWinner == Username))
+                    {
+                        yield return new Auction(wonAuction.AuctionId,
+                            new User(wonAuction.Seller.Username, wonAuction.Seller.SiteName)
+                                {ConnectionString = ConnectionString, AlarmClock = AlarmClock},
+                            wonAuction.Description, wonAuction.EndsOn, wonAuction.SiteName);
+                    }
                 }
-                
-                
+
+
             }
         }
 

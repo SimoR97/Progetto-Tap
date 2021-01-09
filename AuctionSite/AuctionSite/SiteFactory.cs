@@ -147,7 +147,7 @@ namespace AuctionSite
                         if (site.TimeZone == alarmClock.Timezone)
                         {
                             
-                            var siteNew = new Site(site.SiteName, site.TimeZone, site.SessionExpirationInSeconds, site.MinimunBidIncrement) { AlarmClock = alarmClock, ConnectionString = connectionString };
+                            var siteNew = new Site(site.SiteName, site.TimeZone, site.SessionExpirationInSeconds, site.MinimumBidIncrement) { AlarmClock = alarmClock, ConnectionString = connectionString };
                             var alarm =alarmClock.InstantiateAlarm(CleanUpExpiredSessionsTime);
                             alarm.RingingEvent += siteNew.OnRingingEvent;
                             return siteNew;

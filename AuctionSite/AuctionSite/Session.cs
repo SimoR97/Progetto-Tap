@@ -32,13 +32,13 @@ namespace AuctionSite
             IfNullThrow(toRenew);
             using (var ctx = new AuctionContext(ConnectionString))
             {
-                var session = ctx.Sessions
-                    .SingleOrDefault(s => s.SessionId.Equals(toRenew.Id))
-                    ??throw new InvalidOperationException(nameof(toRenew)+ "The session is no longer available ");
+                var session = ctx.Sessions.SingleOrDefault(s => s.SessionId.Equals(toRenew.Id)) ??
+                              throw new InvalidOperationException(nameof(toRenew) +
+                                                                  "The session is no longer available ");
                 if (IsValid())
                 {
                     ValidUntil = AlarmClock.Now.AddSeconds(session.Site.SessionExpirationInSeconds);
-                    session.ValidUntill = ValidUntil;
+                    session.ValidUntil = ValidUntil;
                     ctx.SaveChanges();
                     
                 }
@@ -60,9 +60,8 @@ namespace AuctionSite
                 
                     using (var ctx = new AuctionContext(ConnectionString))
                     {
-                        var session = ctx.Sessions
-                            .SingleOrDefault(s => s.SessionId.Equals(Id))
-                                      ?? throw new InvalidOperationException("The session is no longer available "); ;
+                        var session = ctx.Sessions.SingleOrDefault(s => s.SessionId.Equals(Id));
+                        
 
                         RenewedSession(this);
 
@@ -90,10 +89,8 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(ConnectionString))
             {
-                var session = ctx.Sessions
-                    .SingleOrDefault(s => s.SessionId.Equals(Id));
-
-                return (null != session && session.ValidUntill > AlarmClock.Now);
+                var session = ctx.Sessions.SingleOrDefault(s => s.SessionId.Equals(Id));
+                return (null != session && session.ValidUntil > AlarmClock.Now);
                    
             }
         }
@@ -103,12 +100,10 @@ namespace AuctionSite
             using (var ctx = new AuctionContext(ConnectionString))
             {
                 if (!IsValid()) throw new InvalidOperationException();
-                var session = ctx.Sessions
-                    .SingleOrDefault(s => s.SessionId.Equals(Id)) 
-                              ?? throw new InvalidOperationException( "The session is no longer available "); ;
+                var session = ctx.Sessions.SingleOrDefault(s => s.SessionId.Equals(Id)); 
 
                 ValidUntil = AlarmClock.Now.Subtract(AlarmClock.Now.TimeOfDay);
-                session.ValidUntill = ValidUntil;
+                session.ValidUntil = ValidUntil;
                 ctx.SaveChanges();
             }
         }

@@ -63,10 +63,10 @@ namespace AuctionSite
                             sessionObj?.RenewedSession(session);
 
                             if (Equals(session.User, CurrentWinner()) &&
-                                offer < auction.HighestBid + auction.Site.MinimunBidIncrement ||
+                                offer < auction.HighestBid + auction.Site.MinimumBidIncrement ||
                                 !Equals(session.User, CurrentWinner()) && offer < CurrentPrice() ||
                                 !Equals(session.User, CurrentWinner()) &&
-                                offer < CurrentPrice() + auction.Site.MinimunBidIncrement &&
+                                offer < CurrentPrice() + auction.Site.MinimumBidIncrement &&
                                 auction.FirstBid == false) return false;
 
                             if (auction.FirstBid)
@@ -85,13 +85,13 @@ namespace AuctionSite
                                     case false when !Equals(CurrentWinner(), session.User) &&
                                                     offer > auction.HighestBid:
                                         auction.CurrentPrice = Math.Min(offer,
-                                            auction.HighestBid + auction.Site.MinimunBidIncrement);
+                                            auction.HighestBid + auction.Site.MinimumBidIncrement);
                                         auction.HighestBid = offer;
                                         auction.CurrentWinner = session.User.Username;
                                         break;
                                     case false when !Equals(CurrentWinner(), session.User) &&
                                                     offer <= auction.HighestBid:
-                                        auction.CurrentPrice = Math.Min(offer + auction.Site.MinimunBidIncrement,
+                                        auction.CurrentPrice = Math.Min(offer + auction.Site.MinimumBidIncrement,
                                             auction.HighestBid);
                                         break;
                                 }
