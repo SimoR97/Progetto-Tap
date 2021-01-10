@@ -17,7 +17,6 @@ namespace AuctionSite
         [Required]
         public string Password { get; set; }
         [Key, Column(Order = 1), ForeignKey("Site")]
-        //[ForeignKey("Site")]
         public string SiteName { get; set; }
         public virtual SiteImpl Site { get; set; }
         public virtual ICollection<SessionImpl> Sessions { get; set; }
@@ -47,8 +46,6 @@ namespace AuctionSite
         [ForeignKey("Site")]
         public string SiteName { get; set; }
         public virtual SiteImpl Site { get; set; }
-       
-        //[ForeignKey("Seller")]
         public string Username { get; set; }
         [ForeignKey("Username,SiteName")]
         public virtual UserImpl Seller { get; set; }
@@ -81,7 +78,6 @@ namespace AuctionSite
         [ForeignKey("Site")]
         public string SiteName { get; set; }
         public virtual SiteImpl Site { get; set; }
-        //[ForeignKey("User")]
         public string Username { get; set; }
         [ForeignKey("Username , SiteName")]
         public virtual UserImpl User { get; set; }
