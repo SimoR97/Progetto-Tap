@@ -36,7 +36,7 @@ namespace AuctionSite
         {
             if (EndsOn > AlarmClock.Now) 
             {
-                if (offer > 0)
+                if (offer >= 0)
                 {
                     IfNullThrow(session);
                     

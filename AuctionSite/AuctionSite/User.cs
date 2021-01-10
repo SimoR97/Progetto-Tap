@@ -24,11 +24,49 @@ namespace AuctionSite
         {
             using (var ctx = new AuctionContext(ConnectionString))
             {
-               
+                
                 var userToDelete =
                     ctx.Users.SingleOrDefault(s => s.Username.Equals(Username) && s.SiteName.Equals(SiteName)) ??
-                    throw new InvalidOperationException(nameof(Username) + "doesn't exist anymore"); 
+                    throw new InvalidOperationException(nameof(Username) + "doesn't exist anymore");
 
+                var openAuction = userToDelete.Auctions
+                    .Where(s => s.EndsOn > AlarmClock.Now)
+                    .ToList();
+
+                foreach (var auctionWinStillOpen in openAuction)
+                {
+                    if ((auctionWinStillOpen.CurrentWinner != null && auctionWinStillOpen.CurrentWinner.Equals(Username)) ||
+                         auctionWinStillOpen.Seller.Username.Equals(Username) )
+                        throw new InvalidOperationException(nameof(auctionWinStillOpen.AuctionId) +
+                                                            "Cannot delete because  the user is a winner or a seller of an open auction");
+                    
+                }
+
+                var closedAuctionOwnedByTheUser = ctx.Users
+                    .Where(s => s.Username.Equals(Username) && s.SiteName.Equals(SiteName))
+                    .Select(s => s.Auctions.Where(auctionClosed => auctionClosed.EndsOn <= AlarmClock.Now))
+                    .SingleOrDefault();
+
+                if (WonAuctions().Count() != 0)
+                {
+                    var closedAuctionWonByTheUser = ctx.Auctions
+                        .Where(s => s.CurrentWinner.Equals(Username) && s.SiteName.Equals(SiteName) &&
+                                    s.EndsOn <= AlarmClock.Now)
+                        .ToList();
+                    foreach (var removeCurrentWinnerAuction in closedAuctionWonByTheUser)
+                        removeCurrentWinnerAuction.CurrentWinner = null;
+                    
+                }
+
+                var sessionToDelete = ctx.Users
+                    .Where(s => s.Username.Equals(Username) && s.SiteName.Equals(SiteName))
+                    .Select(s => s.Sessions)
+                    .SingleOrDefault();
+
+                //se l'utente non ha mai creato un'Auction passo un array vuoto di auctionImpl come valore di default
+                //elimino le Auction create dall'utente
+                ctx.Auctions.RemoveRange(closedAuctionOwnedByTheUser ?? Array.Empty<AuctionImpl>());
+                ctx.Sessions.RemoveRange(sessionToDelete ?? Array.Empty<SessionImpl>());
                 ctx.Users.Remove(userToDelete);
                 ctx.SaveChanges();
 

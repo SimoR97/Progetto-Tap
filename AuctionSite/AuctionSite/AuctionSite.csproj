@@ -78,6 +78,10 @@
     <Compile Include="Migrations\202101091111178_FinalConfiguration.designer.cs">
       <DependentUpon>202101091111178_FinalConfiguration.cs</DependentUpon>
     </Compile>
+    <Compile Include="Migrations\202101101353173_FinalConfigWorks.cs" />
+    <Compile Include="Migrations\202101101353173_FinalConfigWorks.designer.cs">
+      <DependentUpon>202101101353173_FinalConfigWorks.cs</DependentUpon>
+    </Compile>
     <Compile Include="Migrations\Configuration.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Session.cs" />
@@ -98,6 +102,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Migrations\202101091111178_FinalConfiguration.resx">
       <DependentUpon>202101091111178_FinalConfiguration.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202101101353173_FinalConfigWorks.resx">
+      <DependentUpon>202101101353173_FinalConfigWorks.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

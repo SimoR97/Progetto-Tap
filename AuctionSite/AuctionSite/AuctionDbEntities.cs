@@ -10,13 +10,14 @@ namespace AuctionSite
     [Table("User")]
     public class UserImpl
     {
-        [Key]
+        [Key, Column(Order = 0)]
         [MinLength(DomainConstraints.MinUserName, ErrorMessage = "Minimum characters are 3"), MaxLength(DomainConstraints.MaxUserName, ErrorMessage = "Minimum characters are 64")]
         public string Username { get; set; }
         [MinLength(DomainConstraints.MinUserPassword, ErrorMessage = "Minimum characters are 4")]
         [Required]
         public string Password { get; set; }
-        [ForeignKey("Site")]
+        [Key, Column(Order = 1), ForeignKey("Site")]
+        //[ForeignKey("Site")]
         public string SiteName { get; set; }
         public virtual SiteImpl Site { get; set; }
         public virtual ICollection<SessionImpl> Sessions { get; set; }
@@ -47,10 +48,11 @@ namespace AuctionSite
         public string SiteName { get; set; }
         public virtual SiteImpl Site { get; set; }
        
-        [ForeignKey("Seller")]
+        //[ForeignKey("Seller")]
         public string Username { get; set; }
+        [ForeignKey("Username,SiteName")]
         public virtual UserImpl Seller { get; set; }
-        private readonly int _idValue = 0 ;
+        private readonly int _idValue;
         public AuctionImpl() { }
         public AuctionImpl(string description, DateTime endsOn, double startingPrice, string siteName, string seller)
         {
@@ -79,15 +81,16 @@ namespace AuctionSite
         [ForeignKey("Site")]
         public string SiteName { get; set; }
         public virtual SiteImpl Site { get; set; }
-        [ForeignKey("User")]
+        //[ForeignKey("User")]
         public string Username { get; set; }
+        [ForeignKey("Username , SiteName")]
         public virtual UserImpl User { get; set; }
         public virtual ICollection<AuctionImpl> Auctions { get; set; }
         public SessionImpl() { }
         public SessionImpl(DateTime validUntil, string username, string siteName)
         {
             var random = new Random();
-            SessionId = random.Next(10000) + username;
+            SessionId = random.Next(10000) + username + siteName;
             ValidUntil = validUntil;
             Username = username;
             SiteName = siteName;
@@ -121,12 +124,13 @@ namespace AuctionSite
 
     public class AuctionContext : DbContext
     {
-        public AuctionContext() : base() { }
-        public AuctionContext(string connectionString) : base(connectionString){}
         public DbSet<SiteImpl> Sites { get; set; }
         public DbSet<UserImpl> Users { get; set; }
         public DbSet<SessionImpl> Sessions { get; set; }
         public DbSet<AuctionImpl> Auctions { get; set; }
+
+        public AuctionContext() : base() { }
+        public AuctionContext(string connectionString) : base(connectionString) { }
 
     }
 }

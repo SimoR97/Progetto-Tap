@@ -72,7 +72,7 @@ namespace AuctionSite
                 
                 try
                 {
-                    ctx.Users.Add(new UserImpl(username, password, Name));
+                    site.Users.Add(new UserImpl(username, password, Name));
                     ctx.SaveChanges();
                 }
                 catch (Exception e)
