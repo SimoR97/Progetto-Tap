@@ -1,12 +1,14 @@
 ﻿using System;
 using NUnit.Framework;
 using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Diagnostics;
 using System.Linq;
 using Moq;
+using TAP2018_19.AuctionSite.Interfaces.Tests;
 using TAP2018_19.AlarmClock.Interfaces;
 
-namespace TAP2018_19.AuctionSite.Interfaces.Tests
-{
+namespace TAP2018_19.AuctionSite.Interfaces.Tests {
     public class UserTests : InstrumentedAuctionSiteTest {
         protected ISite Site;
         protected Mock<IAlarmClock> AlarmClock;
