@@ -128,7 +128,7 @@ namespace AuctionSite
                 
             }
         }
-
+        //ritorno solo le sessioni ancora valide
         public ISession GetSession(string sessionId)
         {
             IfNullThrow(sessionId);
